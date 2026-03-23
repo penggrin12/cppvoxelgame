@@ -1,0 +1,65 @@
+﻿# generator must be "MinGW Makefiles" for whatever reason
+
+cmake_minimum_required(VERSION 4.0)
+
+set(VCPKG_TARGET_TRIPLET "x64-mingw-static" CACHE STRING "")
+set(VCPKG_HOST_TRIPLET "x64-mingw-static" CACHE STRING "")
+
+project(voxelgame)
+
+set(CMAKE_CXX_STANDARD 26)
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG")
+
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-static-libgcc -static-libstdc++ -static -s")
+set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+
+find_package(glfw3 CONFIG REQUIRED)
+find_package(raylib CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+
+add_executable(
+        voxelgame
+        src/main.cpp
+        src/Game.hpp
+        src/Game.cpp
+        src/Entity.hpp
+        src/Player.cpp
+        src/Player.hpp
+        src/mesher.hpp
+        src/utils/utils.hpp
+        src/MeshTool.hpp
+        src/Level.cpp
+        src/Level.hpp
+        src/voxeldata.hpp
+        src/phys/raycast.hpp
+        src/phys/AABB.hpp
+        src/TestEntity.cpp
+        src/TestEntity.hpp
+        src/audio/audio.hpp
+        src/audio/audio.cpp
+        src/Input.hpp
+        lib/rcamera.h
+        src/utils/random.hpp
+        src/utils/math.hpp
+        src/utils/noise.hpp
+        lib/fastnoiselite/FastNoiseLite.h
+)
+
+target_include_directories(voxelgame PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/lib
+)
+
+#target_compile_definitions(voxelgame PRIVATE "$<$<CONFIG:_DEBUG>:_DEBUG>")
+target_link_libraries(voxelgame PRIVATE raylib glfw winmm spdlog::spdlog)
+
+add_custom_target(copy_res ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/res
+        $<TARGET_FILE_DIR:voxelgame>/res
+        COMMENT "Copying res directory"
+)
+add_dependencies(voxelgame copy_res)
