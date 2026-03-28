@@ -31,7 +31,7 @@ GameAudio::GameAudio() {
         throw std::runtime_error(std::format("failed to init miniaudio: {}", static_cast<int>(result)));
     }
 
-    spdlog::info("miniaudio initialized");
+    SPDLOG_INFO("miniaudio initialized");
 }
 
 GameAudio::~GameAudio() {
@@ -57,7 +57,7 @@ void GameAudio::cacheSounds(const std::string &path, const std::string &prefix) 
         auto fileName = raylib::GetFileName(filePath);
         if (!fileName.starts_with(prefix))
             continue;
-        spdlog::debug("found audio file for prefix %s: %s", prefix.c_str(), fileName.c_str());
+        SPDLOG_DEBUG("found audio file for prefix %s: %s", prefix.c_str(), fileName.c_str());
 
         impl->cachedSounds[prefix].push_back(std::make_unique<ma_sound>());
         ma_result result = ma_sound_init_from_file(&impl->engine, filePath.c_str(), 0, nullptr, nullptr, impl->cachedSounds[prefix].back().get());

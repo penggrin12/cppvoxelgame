@@ -18,11 +18,18 @@ struct DebugStats {
     int tris = 0;
 };
 
-class Game {
-private:
+class Game;
+
+struct GameResources {
+    raylib::Font font;
     raylib::Texture terrainTexture;
     raylib::Material terrainMaterial;
 
+    explicit GameResources(Game*);
+};
+
+class Game {
+private:
     GameAudio audio;
     GameInput input;
     raylib::Window& window;
@@ -31,9 +38,9 @@ private:
 
     std::vector<std::unique_ptr<Entity>> entities;
 
-    void initResources();
     void drawDebug();
 public:
+    GameResources res;
     DebugStats debugStats;
 
     Game(const Game&) = delete;
@@ -58,6 +65,10 @@ public:
 
     void logic();
     void draw();
+
+    void DrawTextB(const std::string& text, const int posX, const int posY, const int fontSize, const raylib::Color color = raylib::Color::White()) const {
+        DrawTextEx(res.font, text, raylib::Vector2{static_cast<float>(posX), static_cast<float>(posY)}, fontSize, 0, color);
+    }
 };
 
 inline Game* game = nullptr;

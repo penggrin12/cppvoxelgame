@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD 26)
 
 add_compile_definitions(
         $<$<CONFIG:Debug>:DEBUG>
+        $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>
+        $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
 )
 
 find_package(glfw3 CONFIG REQUIRED)

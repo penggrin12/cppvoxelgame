@@ -55,8 +55,6 @@ class Chunk {
 private:
     Voxel::Id voxels[CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE] = {};
 public:
-    ~Chunk() { spdlog::debug("destructing chunk"); }
-
     std::unique_ptr<raylib::Mesh> mesh;
     bool meshDirty = true;
 
@@ -70,14 +68,16 @@ class Level {
 private:
     std::unordered_map<ivec2, std::unique_ptr<Chunk>> chunks;
 public:
+    std::mutex mutex;
+
     std::queue<std::pair<ivec2, Chunk*>> dirtyChunksQueue;
     std::queue<std::pair<Chunk*, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
 
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 
-    [[nodiscard]] bool hasChunk(const ivec2& chunkPos) const { return chunks.contains(chunkPos); }
-    void createChunk(const ivec2& chunkPos) { ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos)); chunks[chunkPos] = std::make_unique<Chunk>(); dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));  }
-    void removeChunk(const ivec2& chunkPos) { chunks[chunkPos].reset(); chunks.erase(chunkPos); }
+    [[nodiscard]] bool hasChunk(const ivec2& chunkPos);
+    void createChunk(const ivec2& chunkPos);
+    void removeChunk(const ivec2& chunkPos);
     void genChunk(const ivec2& chunkPos);
 
     // nullptr if it doesn't exist
@@ -91,22 +91,10 @@ public:
 
     std::vector<AABB> getCubes(const AABB& box);
 
-    void markVoxelDirty(const Location& loc) { dirtyChunksQueue.emplace(loc.chunkPos, getChunk(loc.chunkPos)); }
-    void markVoxelDirtyAndNeighbours(const Location& loc) {
-        std::queue<ivec2> q;
-        q.push(loc.chunkPos);
-
-        if (loc.pos.x == 0) q.push(loc.chunkPos + ivec2{-1, 0});
-        if (loc.pos.x == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{1, 0});
-
-        if (loc.pos.z == 0) q.push(loc.chunkPos + ivec2{0, -1});
-        if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
-
-        while (!q.empty()) {
-            dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
-            q.pop();
-        }
-    }
+    void markChunkDirty(const ivec2& chunkPos);
+    void markChunkDirty(const ivec2 &chunkPos, Chunk* chunk);
+    void markVoxelDirty(const Location& loc);
+    void markVoxelDirtyAndNeighbours(const Location& loc);
 };
 
 

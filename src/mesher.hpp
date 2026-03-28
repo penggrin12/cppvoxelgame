@@ -40,6 +40,10 @@ constexpr Side SIDE_BOTTOM = {0, 1, 5, 4, { 0, -1,  0}};
 
 constexpr Side CUBE_SIDES[6] = {SIDE_TOP, SIDE_BOTTOM, SIDE_LEFT, SIDE_RIGHT, SIDE_BACK, SIDE_FRONT};
 
+inline std::mutex chunkerMtx;
+inline std::condition_variable chunkerCv;
+inline bool chunkerShouldStop = false;
+
 inline void addFace(MeshTool& meshTool, const Side &side, const ivec2 atlasOffset, const ivec3 offset) {
     const ivec3 a = CUBE_VERTICES[side.v0] + offset;
     const ivec3 b = CUBE_VERTICES[side.v1] + offset;
@@ -62,10 +66,9 @@ inline void addFace(MeshTool& meshTool, const Side &side, const ivec2 atlasOffse
 inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const ivec2& chunkPos, const ivec3& pos) {
     for (int i = 0; i < sizeof(CUBE_SIDES) / sizeof(Side); ++i) {
         const auto sideNormal = CUBE_SIDES[i].normal;
-        const auto globalPos = Location::fromGlobalPos(ivec3{pos.x + chunkPos.x * CHUNK_SIZE + sideNormal.x, pos.y + sideNormal.y, pos.z + chunkPos.y * CHUNK_SIZE + sideNormal.z});
-        if (!level->hasChunk(globalPos.chunkPos))
-            continue;
-        if (level->isVoxelSolid(globalPos))
+        const auto sideLoc = Location::fromGlobalPos(ivec3{pos.x + chunkPos.x * CHUNK_SIZE + sideNormal.x, pos.y + sideNormal.y, pos.z + chunkPos.y * CHUNK_SIZE + sideNormal.z});
+        assert(level->hasChunk(sideLoc.chunkPos));
+        if (level->isVoxelSolid(sideLoc))
             continue;
 
         addFace(meshTool, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], pos);
@@ -73,21 +76,24 @@ inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const
 }
 
 [[noreturn]] inline void chunkerThread(Level* level) {
-    spdlog::info("chunkerThread started");
+    SPDLOG_INFO("chunkerThread started");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
-    while (true) {
-        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        // std::this_thread::yield();
-        // std::this_thread::sleep_for(std::chrono::duration<float>(1));
-        if (level->dirtyChunksQueue.empty())
-            continue;
-        spdlog::info("chunkerThread runninnggggg");
+    while (!chunkerShouldStop) {
+        std::unique_lock chunkerLock(chunkerMtx);
+        chunkerCv.wait(chunkerLock, [&] {
+            return chunkerShouldStop || !level->dirtyChunksQueue.empty();
+        });
+        if (chunkerShouldStop) break;
 
-        const auto& [chunkPos, chunk] = level->dirtyChunksQueue.front();
-        spdlog::info("{} {}", chunkPos.x, chunkPos.y);
+        SPDLOG_INFO("chunkerThread running");
+
+        const auto [chunkPos, chunk] = level->dirtyChunksQueue.front();
+        level->dirtyChunksQueue.pop();
+        chunkerLock.unlock();
+        SPDLOG_INFO("{} {}", chunkPos.x, chunkPos.y);
 
 #ifdef DEBUG
         auto t0 = std::chrono::high_resolution_clock::now();
@@ -95,6 +101,7 @@ inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const
 
         meshTool.clear();
 
+        std::lock_guard lock(level->mutex);
         for (int x = 0; x < CHUNK_SIZE; ++x) {
             for (int y = 0; y < LEVEL_HEIGHT; ++y) {
                 for (int z = 0; z < CHUNK_SIZE; ++z) {
@@ -116,13 +123,11 @@ inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const
 
 #ifdef DEBUG
         auto t1 = std::chrono::high_resolution_clock::now();
-        spdlog::debug("{} ms", (t1-t0).count() / static_cast<double>(1'000'000));
+        SPDLOG_DEBUG("{} ms", (t1-t0).count() / static_cast<double>(1'000'000));
 #endif
 
         chunk->meshDirty = false;
-        spdlog::debug("dirty chunk cleaned");
-
-        level->dirtyChunksQueue.pop();
+        SPDLOG_DEBUG("dirty chunk cleaned");
     }
 }
 

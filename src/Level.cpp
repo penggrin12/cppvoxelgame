@@ -6,6 +6,9 @@
 
 #include "Level.hpp"
 
+#include <ranges>
+
+#include "mesher.hpp"
 #include "voxeldata.hpp"
 #include "utils/noise.hpp"
 
@@ -45,6 +48,21 @@ void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
 }
 
 /// Level
+
+bool Level::hasChunk(const ivec2 &chunkPos) {
+    return chunks.contains(chunkPos);
+}
+
+void Level::createChunk(const ivec2 &chunkPos) {
+    ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos));
+    chunks[chunkPos] = std::make_unique<Chunk>();
+    // dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));
+}
+
+void Level::removeChunk(const ivec2 &chunkPos) {
+    chunks[chunkPos].reset();
+    chunks.erase(chunkPos);
+}
 
 void Level::genChunk(const ivec2 &chunkPos) {
     Chunk* chunk = getChunk(chunkPos);
@@ -134,4 +152,51 @@ std::vector<AABB> Level::getCubes(const AABB& box) {
     }
 
     return boxes;
+}
+
+void Level::markChunkDirty(const ivec2 &chunkPos) {
+    markChunkDirty(chunkPos, getChunk(chunkPos));
+}
+
+void Level::markChunkDirty(const ivec2 &chunkPos, Chunk* chunk) {
+    {
+        std::lock_guard lock(chunkerMtx);
+;
+        for (const auto &otherChunkPos: dirtyChunksQueue._Get_container() | std::views::keys) {
+            if (otherChunkPos == chunkPos)
+                return;
+        }
+
+        dirtyChunksQueue.emplace(chunkPos, chunk);
+    }
+    chunkerCv.notify_one();
+}
+
+void Level::markVoxelDirty(const Location &loc) {
+    markChunkDirty(loc.chunkPos);
+}
+
+void Level::markVoxelDirtyAndNeighbours(const Location &loc) {
+    std::queue<ivec2> q;
+    q.push(loc.chunkPos);
+
+    if (loc.pos.x == 0) q.push(loc.chunkPos + ivec2{-1, 0});
+    if (loc.pos.x == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{1, 0});
+
+    if (loc.pos.z == 0) q.push(loc.chunkPos + ivec2{0, -1});
+    if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
+
+    // {
+    //     std::lock_guard lock(chunkerMtx);
+    //     while (!q.empty()) {
+    //         dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
+    //         q.pop();
+    //     }
+    // }
+    // chunkerCv.notify_one();
+
+    while (!q.empty()) {
+        markChunkDirty(q.front());
+        q.pop();
+    }
 }

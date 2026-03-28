@@ -14,12 +14,10 @@
 
 raylib::Mesh mesh;
 
-void debugRay(RaycastHit& ray) {
-    raylib::DrawText(std::format("{} {} {} {}", ray.hit, ray.normal.x, ray.normal.y, ray.normal.z), 64, 150, 20, raylib::Color::White());
-}
+GameResources::GameResources(Game* game) {
+    game->getAudio().cacheSounds("./res/sounds", "dirt.break");
 
-void Game::initResources() {
-    getAudio().cacheSounds("./res/sounds", "dirt.break");
+    font = raylib::Font("res/PressStart2P.ttf");
 
     terrainTexture = raylib::Texture("res/textures/terrain.png");
     terrainTexture.SetWrap(TEXTURE_WRAP_CLAMP);
@@ -31,21 +29,25 @@ void Game::initResources() {
     terrainMaterial.SetShader(terrainShader);
 }
 
-Game::Game(raylib::Window& window) : window(window) {
-    initResources();
+void debugRay(RaycastHit& ray) {
+    game->DrawTextB(std::format("{} {} {} {}", ray.hit, ray.normal.x, ray.normal.y, ray.normal.z), 64, 150, 12, raylib::Color::White());
+}
 
+Game::Game(raylib::Window& window) : window(window), res(this) {
     curLevel = std::make_unique<Level>();
 
     startChunkerThread(curLevel.get());
 
     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
     player->setPos({8, 20, 8});
-    spdlog::debug("player: {}", addEntity(player));
+    addEntity(player);
 
     DisableCursor();
 }
 
-Game::~Game() = default;
+Game::~Game() {
+    chunkerShouldStop = true;
+}
 
 void Game::logic() {
     for (const auto& entity: entities)
@@ -78,11 +80,11 @@ void Game::draw() {
 
     for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
         if (chunk->mesh == nullptr) {
-            spdlog::warn("oh no nullptr mesh");
+            // SPDLOG_WARN("oh no nullptr mesh");
             continue;
         }
 
-        chunk->mesh->Draw(terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
+        chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
     }
 
     for (const auto& entity: entities)
@@ -111,17 +113,18 @@ void Game::draw() {
 void Game::drawDebug() {
     int posY = 22;
 
-    auto drawText = [&posY](const std::string& text)
+    auto drawText = [&posY, this](const std::string& text, const raylib::Color color = raylib::Color::White())
     {
         const auto height = (std::count(text.begin(), text.end(), '\n') + 1) * 22;
-        raylib::DrawText(text, 2, posY, 20, raylib::Color::White());
+        raylib::DrawTextEx(res.font, text, raylib::Vector2{2, static_cast<float>(posY)}, 12, 0, color);
         posY += height;
     };
 
     const auto playerPos = getPlayer().getPos();
 
     window.DrawFPS(2, 2);
-    drawText(std::format("T: {}, Q: {}", debugStats.tris, debugStats.tris / 2));
-    drawText(std::format("X: {:.2f}\nY: {:.2f}\nZ: {:.2f}", playerPos.x, playerPos.y, playerPos.z));
-    drawText(std::format("C: {}, {}", floorDiv(playerPos.x, CHUNK_SIZE), floorDiv(playerPos.z, CHUNK_SIZE)));
+    drawText(std::format("T : {}, Q: {}", debugStats.tris, debugStats.tris / 2));
+    drawText(std::format("X : {:.2f}\nY: {:.2f}\nZ: {:.2f}", playerPos.x, playerPos.y, playerPos.z), raylib::Color::Green());
+    drawText(std::format("C : {}, {}", floorDiv(playerPos.x, CHUNK_SIZE), floorDiv(playerPos.z, CHUNK_SIZE)), raylib::Color::SkyBlue());
+    drawText(std::format("CU: {}", curLevel->dirtyChunksQueue.size()), raylib::Color::SkyBlue());
 }

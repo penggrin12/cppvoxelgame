@@ -15,6 +15,8 @@
 constexpr int renderDist = 4;
 
 void Player::iWantToSeeNearbyChunks() const {
+    std::lock_guard lock(level->mutex);
+
     const Location myLoc = Location::fromGlobalPos(getPos());
 
     for (int cx = myLoc.chunkPos.x - renderDist; cx < myLoc.chunkPos.x + renderDist; ++cx) {
@@ -32,7 +34,11 @@ void Player::iWantToSeeNearbyChunks() const {
         keysCopy.push_back(k);
 
     for (const auto& chunkPos: keysCopy) {
-        if (distChebyshev(myLoc.chunkPos, chunkPos) <= renderDist + 1)
+        const auto dist = distChebyshev(myLoc.chunkPos, chunkPos);
+        if ((dist < renderDist - 1) && (level->getChunk(chunkPos)->mesh == nullptr)) {
+            level->markChunkDirty(chunkPos);
+        }
+        if (dist <= renderDist + 1)
             continue;
         level->removeChunk(chunkPos);
     }
@@ -54,9 +60,9 @@ void Player::draw() {
 
 void Player::draw2d() {
     const auto vec = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
-    raylib::DrawText(std::format("{} {}", vec.x, vec.y), 8, 170, 18, raylib::Color::White());
+    game->DrawTextB(std::format("{} {}", vec.x, vec.y), 8, 170, 12, raylib::Color::White());
     const auto aabb = getAabb();
-    raylib::DrawText(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 8, 195, 18, raylib::Color::White());
+    game->DrawTextB(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 8, 195, 12, raylib::Color::White());
 }
 
 void Player::logic() {

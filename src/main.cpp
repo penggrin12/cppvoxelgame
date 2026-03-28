@@ -38,7 +38,7 @@ void raylibLog(const int logLevel, const char *text, va_list args) {
 }
 
 int main() {
-    spdlog::set_pattern("[%H:%M:%S:%e] [%l] %v");
+    spdlog::set_pattern("[%H:%M:%S:%e] [%s:%!:%#] [%l] %v");
 
 #ifdef DEBUG
     spdlog::set_level(spdlog::level::debug);
@@ -48,7 +48,7 @@ int main() {
 
     SetTraceLogCallback(raylibLog);
 
-    raylib::Window window(800, 600, "voxel game");
+    raylib::Window window(1200, 800, "voxel game");
     // window.SetTargetFPS(60);
 
     Game _game(window);
