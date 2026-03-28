@@ -85,12 +85,6 @@ void Game::draw() {
     rlEnableDepthMask();
     rlEnableBackfaceCulling();
 
-    // printf("%f %f %f\n", camera.position.x, camera.position.y, camera.position.z);
-
-    // DrawTriangle3D(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1), raylib::Color::Red());
-
-    // drawCube(vec3(0, 5, 0));
-
     for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
         if (chunk->mesh == nullptr) {
             // SPDLOG_WARN("oh no nullptr mesh");
