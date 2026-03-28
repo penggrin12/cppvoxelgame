@@ -1,20 +1,14 @@
-﻿# generator must be "MinGW Makefiles" for whatever reason
+﻿# generator must be "MinGW Makefiles" if not using MSVC for whatever reason
 
 cmake_minimum_required(VERSION 4.0)
-
-set(VCPKG_TARGET_TRIPLET "x64-mingw-static" CACHE STRING "")
-set(VCPKG_HOST_TRIPLET "x64-mingw-static" CACHE STRING "")
 
 project(voxelgame)
 
 set(CMAKE_CXX_STANDARD 26)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG")
-
-set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-static-libgcc -static-libstdc++ -static -s")
-set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
-set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+add_compile_definitions(
+        $<$<CONFIG:Debug>:DEBUG>
+)
 
 find_package(glfw3 CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)

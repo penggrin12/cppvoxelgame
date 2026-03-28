@@ -56,7 +56,16 @@ constexpr T normalize(const T& vec) {
     return glm::normalize(vec);
 }
 
-constexpr raylib::Vector3 glm2rl(const glm::vec3& v) { return {v.x, v.y, v.z}; }
-constexpr glm::vec3 rl2glm(const raylib::Vector3& v) { return {v.x, v.y, v.z}; }
+// cant be constexpr on msvc until <https://github.com/RobLoach/raylib-cpp/issues/383> resolves
+#if defined(_MSC_VER) && !defined(__clang__)
+#  define CONSTEXPR_IF_SUPPORTED
+#else
+#  define CONSTEXPR_IF_SUPPORTED constexpr
+#endif
+
+inline CONSTEXPR_IF_SUPPORTED raylib::Vector3 glm2rl(const glm::vec3& v) { return {v.x, v.y, v.z}; }
+inline CONSTEXPR_IF_SUPPORTED glm::vec3 rl2glm(const raylib::Vector3& v) { return {v.x, v.y, v.z}; }
+
+#undef CONSTEXPR_IF_SUPPORTED
 
 #endif //VOXELGAME_UTILS_HPP
