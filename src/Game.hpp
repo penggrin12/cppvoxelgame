@@ -7,13 +7,14 @@
 
 #include <memory>
 
-#include "Entity.hpp"
 #include "Input.hpp"
 #include "Level.hpp"
-#include "Player.hpp"
 #include "audio/audio.hpp"
+#include "entities/Entity.hpp"
+#include "entities/Player.hpp"
 
 struct DebugStats {
+    uint64_t frame = 0;
     int tris = 0;
 };
 
@@ -40,6 +41,8 @@ public:
 
     explicit Game(raylib::Window&);
     ~Game();
+
+    [[nodiscard]] Level* getCurrLevel() const { return curLevel.get(); }
 
     GameAudio& getAudio() { return audio; }
     GameInput& getInput() { return input; }

@@ -10,6 +10,8 @@
 class Player final : public Entity {
 private:
     raylib::Camera3D camera;
+
+    void iWantToSeeNearbyChunks() const;
 public:
     Player() = delete;
 

@@ -7,6 +7,7 @@
 #include "Level.hpp"
 
 #include "voxeldata.hpp"
+#include "utils/noise.hpp"
 
 /// Chunk
 
@@ -45,6 +46,25 @@ void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
 
 /// Level
 
+void Level::genChunk(const ivec2 &chunkPos) {
+    Chunk* chunk = getChunk(chunkPos);
+    ASSERT_AND_RETURN_VOID(chunk != nullptr)
+
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
+            const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
+            // printf("%f\n", );
+            for (int y = 0; y < LEVEL_HEIGHT; ++y) {
+                if (height < y)
+                    continue;
+
+                chunk->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
+            }
+        }
+    }
+}
+
 Chunk* Level::getChunk(const ivec2 chunkPos) {
     if (!hasChunk(chunkPos))
         return nullptr;
@@ -76,7 +96,7 @@ bool Level::isVoxelSolid(const Location &loc) {
 
 void Level::setVoxel(const Location& loc, const Voxel::Id voxel) {
     const auto chunk = getChunk(loc.chunkPos);
-    ASSERT_AND_RETURN(chunk != nullptr,)
+    ASSERT_AND_RETURN_VOID(chunk != nullptr)
     chunk->setVoxel(loc.pos, voxel);
 }
 

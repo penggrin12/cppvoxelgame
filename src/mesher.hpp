@@ -13,6 +13,7 @@
 #include "utils/utils.hpp"
 
 constexpr int TEXTURE_ATLAS_ITEM_SIZE = 16; // X and Y
+constexpr int TEXTURE_ATLAS_PIXEL_SIZE = 256; // X and Y
 
 constexpr ivec3 CUBE_VERTICES[8] = {
     {0, 0, 0},
@@ -47,12 +48,13 @@ inline void addFace(MeshTool& meshTool, const Side &side, const ivec2 atlasOffse
 
     static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
 
-    const float uvOffsetX = atlasOffset.x * uvSize;
-    const float uvOffsetY = atlasOffset.y * uvSize;
-    const vec2 uvA = {uvOffsetX,            uvOffsetY + uvSize};
-    const vec2 uvB = {uvOffsetX + uvSize,   uvOffsetY + uvSize};
-    const vec2 uvC = {uvOffsetX + uvSize,   uvOffsetY};
-    const vec2 uvD = {uvOffsetX,            uvOffsetY};
+    const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
+    constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
+
+    const vec2 uvA = {uvOffset.x + inset,            uvOffset.y + uvSize - inset};
+    const vec2 uvB = {uvOffset.x + uvSize - inset,   uvOffset.y + uvSize - inset};
+    const vec2 uvC = {uvOffset.x + uvSize - inset,   uvOffset.y + inset};
+    const vec2 uvD = {uvOffset.x + inset,            uvOffset.y + inset};
 
     meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal));
 }
@@ -70,11 +72,22 @@ inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const
     }
 }
 
-inline void rebuildDirtyChunks(Level* level) {
+[[noreturn]] inline void chunkerThread(Level* level) {
+    spdlog::info("chunkerThread started");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
     MeshTool meshTool;
-    for (auto& [chunkPos, chunk] : level->getChunks()) {
-        if (!chunk->meshDirty)
+    while (true) {
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // std::this_thread::yield();
+        // std::this_thread::sleep_for(std::chrono::duration<float>(1));
+        if (level->dirtyChunksQueue.empty())
             continue;
+        spdlog::info("chunkerThread runninnggggg");
+
+        const auto& [chunkPos, chunk] = level->dirtyChunksQueue.front();
+        spdlog::info("{} {}", chunkPos.x, chunkPos.y);
 
 #ifdef DEBUG
         auto t0 = std::chrono::high_resolution_clock::now();
@@ -94,10 +107,12 @@ inline void rebuildDirtyChunks(Level* level) {
                 }
             }
         }
-        chunk->mesh = std::make_unique<raylib::Mesh>();
-        chunk->mesh->boneMatrices = nullptr; // raylib-cpp issue #344
-        meshTool.exportToMesh(chunk->mesh.get());
-        chunk->mesh->Upload();
+
+        auto newMesh = std::make_unique<raylib::Mesh>();
+        newMesh->boneMatrices = nullptr; // raylib-cpp issue #344
+        meshTool.exportToMesh(newMesh.get());
+
+        level->chunksReadyToSwapMeshQueue.emplace(chunk, std::move(newMesh));
 
 #ifdef DEBUG
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -106,7 +121,14 @@ inline void rebuildDirtyChunks(Level* level) {
 
         chunk->meshDirty = false;
         spdlog::debug("dirty chunk cleaned");
+
+        level->dirtyChunksQueue.pop();
     }
+}
+
+inline void startChunkerThread(Level* level) {
+    std::thread thread(chunkerThread, level);
+    thread.detach();
 }
 
 #endif //VOXELGAME_MESHER_HPP

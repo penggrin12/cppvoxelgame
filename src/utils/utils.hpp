@@ -13,6 +13,7 @@
 #include <glm/gtx/hash.hpp>
 
 #define ASSERT_AND_RETURN(expression, returnValue) { assert(expression); if (!(expression)) return returnValue; }
+#define ASSERT_AND_RETURN_VOID(expression) ASSERT_AND_RETURN(expression,)
 
 using ivec2 = glm::ivec2;
 using ivec3 = glm::ivec3;

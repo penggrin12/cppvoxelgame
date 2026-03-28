@@ -62,6 +62,7 @@ int main() {
         game->logic();
         game->draw();
 
+        game->debugStats.frame++;
         window.EndDrawing();
     }
 

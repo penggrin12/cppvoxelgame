@@ -4,8 +4,8 @@
 
 #ifndef VOXELGAME_INPUT_HPP
 #define VOXELGAME_INPUT_HPP
+#include <raylib-cpp.hpp>
 #include <glm/vec2.hpp>
-#include <raylib-cpp/Keyboard.hpp>
 
 #include "utils/utils.hpp"
 

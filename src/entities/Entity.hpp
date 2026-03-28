@@ -5,9 +5,9 @@
 #ifndef VOXELGAME_ENTITY_HPP
 #define VOXELGAME_ENTITY_HPP
 
-#include "Level.hpp"
-#include "phys/AABB.hpp"
-#include "utils/utils.hpp"
+#include "../Level.hpp"
+#include "../phys/AABB.hpp"
+#include "../utils/utils.hpp"
 
 
 class Entity {

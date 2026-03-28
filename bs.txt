@@ -1,0 +1,501 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7d99539..db63dcb 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,8 +9,8 @@ project(voxelgame)
+ 
+ set(CMAKE_CXX_STANDARD 26)
+ 
+-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG")
++set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
++set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG")
+ 
+ set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-static-libgcc -static-libstdc++ -static -s")
+ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+@@ -25,9 +25,9 @@ add_executable(
+         src/main.cpp
+         src/Game.hpp
+         src/Game.cpp
+-        src/Entity.hpp
+-        src/Player.cpp
+-        src/Player.hpp
++        src/entities/Entity.hpp
++        src/entities/Player.cpp
++        src/entities/Player.hpp
+         src/mesher.hpp
+         src/utils/utils.hpp
+         src/MeshTool.hpp
+@@ -36,8 +36,8 @@ add_executable(
+         src/voxeldata.hpp
+         src/phys/raycast.hpp
+         src/phys/AABB.hpp
+-        src/TestEntity.cpp
+-        src/TestEntity.hpp
++        src/entities/TestEntity.cpp
++        src/entities/TestEntity.hpp
+         src/audio/audio.hpp
+         src/audio/audio.cpp
+         src/Input.hpp
+diff --git a/src/Game.cpp b/src/Game.cpp
+index 8b81b53..cebd7bb 100644
+--- a/src/Game.cpp
++++ b/src/Game.cpp
+@@ -8,40 +8,12 @@
+ #include <memory>
+ 
+ #include "mesher.hpp"
+-#include "TestEntity.hpp"
++#include "entities/TestEntity.hpp"
+ #include "phys/raycast.hpp"
+ #include "utils/noise.hpp"
+ 
+ raylib::Mesh mesh;
+ 
+-void genLevel(Level* level) {
+-    // const auto noise = raylib::Image(GenImagePerlinNoise(32, 32, 0, 0, 1.0f));
+-    // const SimplexNoise noise{};
+-
+-    for (int x = -4; x < 4; ++x) {
+-        for (int y = -4; y < 4; ++y) {
+-            const auto pos = ivec2{x, y};
+-            if (level->hasChunk(pos))
+-                continue;
+-            level->createChunk(pos);
+-        }
+-    }
+-
+-    for (int x = 0; x < 32; ++x) {
+-        for (int z = 0; z < 32; ++z) {
+-            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
+-            const auto height = static_cast<int>((noise::at(x, z) / 2.0f + 0.5f) * 16);
+-            // printf("%f\n", );
+-            for (int y = 0; y < 32; ++y) {
+-                if (height < y)
+-                    continue;
+-
+-                level->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
+-            }
+-        }
+-    }
+-}
+-
+ void debugRay(RaycastHit& ray) {
+     raylib::DrawText(std::format("{} {} {} {}", ray.hit, ray.normal.x, ray.normal.y, ray.normal.z), 64, 150, 20, raylib::Color::White());
+ }
+@@ -50,6 +22,8 @@ void Game::initResources() {
+     getAudio().cacheSounds("./res/sounds", "dirt.break");
+ 
+     terrainTexture = raylib::Texture("res/textures/terrain.png");
++    terrainTexture.SetWrap(TEXTURE_WRAP_CLAMP);
++    terrainTexture.SetFilter(TEXTURE_FILTER_POINT);
+     const auto terrainShader = LoadShader("res/shaders/terrain.vs.glsl", "res/shaders/terrain.fs.glsl");
+ 
+     terrainMaterial = raylib::Material();
+@@ -62,13 +36,13 @@ Game::Game(raylib::Window& window) : window(window) {
+ 
+     curLevel = std::make_unique<Level>();
+ 
++    startChunkerThread(curLevel.get());
++
+     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
+     player->setPos({8, 20, 8});
+     spdlog::debug("player: {}", addEntity(player));
+ 
+     DisableCursor();
+-
+-    genLevel(curLevel.get());
+ }
+ 
+ Game::~Game() = default;
+@@ -82,6 +56,13 @@ void Game::logic() {
+         ent->setPos(getPlayer().getPos());
+         addEntity(ent);
+     }
++
++    while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
++        auto& [chunk, newMesh] = curLevel->chunksReadyToSwapMeshQueue.front();
++        newMesh->Upload();
++        chunk->mesh = std::move(newMesh);
++        curLevel->chunksReadyToSwapMeshQueue.pop();
++    }
+ }
+ 
+ void Game::draw() {
+@@ -95,7 +76,6 @@ void Game::draw() {
+ 
+     // drawCube(vec3(0, 5, 0));
+ 
+-    rebuildDirtyChunks(curLevel.get());
+     for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
+         if (chunk->mesh == nullptr) {
+             spdlog::warn("oh no nullptr mesh");
+diff --git a/src/Game.hpp b/src/Game.hpp
+index aed32bf..e700e5c 100644
+--- a/src/Game.hpp
++++ b/src/Game.hpp
+@@ -7,13 +7,14 @@
+ 
+ #include <memory>
+ 
+-#include "Entity.hpp"
+ #include "Input.hpp"
+ #include "Level.hpp"
+-#include "Player.hpp"
+ #include "audio/audio.hpp"
++#include "entities/Entity.hpp"
++#include "entities/Player.hpp"
+ 
+ struct DebugStats {
++    uint64_t frame = 0;
+     int tris = 0;
+ };
+ 
+@@ -41,6 +42,8 @@ public:
+     explicit Game(raylib::Window&);
+     ~Game();
+ 
++    [[nodiscard]] Level* getCurrLevel() const { return curLevel.get(); }
++
+     GameAudio& getAudio() { return audio; }
+     GameInput& getInput() { return input; }
+ 
+diff --git a/src/Input.hpp b/src/Input.hpp
+index c2430fc..909d34e 100644
+--- a/src/Input.hpp
++++ b/src/Input.hpp
+@@ -4,8 +4,8 @@
+ 
+ #ifndef VOXELGAME_INPUT_HPP
+ #define VOXELGAME_INPUT_HPP
++#include <raylib-cpp.hpp>
+ #include <glm/vec2.hpp>
+-#include <raylib-cpp/Keyboard.hpp>
+ 
+ #include "utils/utils.hpp"
+ 
+diff --git a/src/Level.cpp b/src/Level.cpp
+index 3267f2f..07af7dc 100644
+--- a/src/Level.cpp
++++ b/src/Level.cpp
+@@ -7,6 +7,7 @@
+ #include "Level.hpp"
+ 
+ #include "voxeldata.hpp"
++#include "utils/noise.hpp"
+ 
+ /// Chunk
+ 
+@@ -45,6 +46,25 @@ void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
+ 
+ /// Level
+ 
++void Level::genChunk(const ivec2 &chunkPos) {
++    Chunk* chunk = getChunk(chunkPos);
++    ASSERT_AND_RETURN_VOID(chunk != nullptr)
++
++    for (int x = 0; x < CHUNK_SIZE; ++x) {
++        for (int z = 0; z < CHUNK_SIZE; ++z) {
++            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
++            const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
++            // printf("%f\n", );
++            for (int y = 0; y < LEVEL_HEIGHT; ++y) {
++                if (height < y)
++                    continue;
++
++                chunk->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
++            }
++        }
++    }
++}
++
+ Chunk* Level::getChunk(const ivec2 chunkPos) {
+     if (!hasChunk(chunkPos))
+         return nullptr;
+@@ -76,7 +96,7 @@ bool Level::isVoxelSolid(const Location &loc) {
+ 
+ void Level::setVoxel(const Location& loc, const Voxel::Id voxel) {
+     const auto chunk = getChunk(loc.chunkPos);
+-    ASSERT_AND_RETURN(chunk != nullptr,)
++    ASSERT_AND_RETURN_VOID(chunk != nullptr)
+     chunk->setVoxel(loc.pos, voxel);
+ }
+ 
+diff --git a/src/Level.hpp b/src/Level.hpp
+index 98e861b..17c2d1b 100644
+--- a/src/Level.hpp
++++ b/src/Level.hpp
+@@ -7,13 +7,15 @@
+ #include <memory>
+ #include <queue>
+ #include <unordered_map>
++#include <spdlog/spdlog.h>
++
+ #include "utils/utils.hpp"
+ 
+ #include "voxeldata.hpp"
+ #include "phys/AABB.hpp"
+ #include "utils/math.hpp"
+ 
+-constexpr int LEVEL_HEIGHT = 32;
++constexpr int LEVEL_HEIGHT = 128;
+ constexpr int CHUNK_SIZE = 16; // squared (XZ), Y is as tall as the level
+ 
+ struct Location {
+@@ -53,6 +55,8 @@ class Chunk {
+ private:
+     Voxel::Id voxels[CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE] = {};
+ public:
++    ~Chunk() { spdlog::debug("destructing chunk"); }
++
+     std::unique_ptr<raylib::Mesh> mesh;
+     bool meshDirty = true;
+ 
+@@ -66,10 +70,15 @@ class Level {
+ private:
+     std::unordered_map<ivec2, std::unique_ptr<Chunk>> chunks;
+ public:
++    std::queue<std::pair<ivec2, Chunk*>> dirtyChunksQueue;
++    std::queue<std::pair<Chunk*, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
++
+     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
+ 
+     [[nodiscard]] bool hasChunk(const ivec2& chunkPos) const { return chunks.contains(chunkPos); }
+-    void createChunk(const ivec2& chunkPos) { chunks[chunkPos] = std::make_unique<Chunk>(); }
++    void createChunk(const ivec2& chunkPos) { ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos)); chunks[chunkPos] = std::make_unique<Chunk>(); dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));  }
++    void removeChunk(const ivec2& chunkPos) { chunks[chunkPos].reset(); chunks.erase(chunkPos); }
++    void genChunk(const ivec2& chunkPos);
+ 
+     // nullptr if it doesn't exist
+     Chunk* getChunk(ivec2 chunkPos);
+@@ -82,7 +91,7 @@ public:
+ 
+     std::vector<AABB> getCubes(const AABB& box);
+ 
+-    void markVoxelDirty(const Location& loc) { getChunk(loc.chunkPos)->meshDirty = true; }
++    void markVoxelDirty(const Location& loc) { dirtyChunksQueue.emplace(loc.chunkPos, getChunk(loc.chunkPos)); }
+     void markVoxelDirtyAndNeighbours(const Location& loc) {
+         std::queue<ivec2> q;
+         q.push(loc.chunkPos);
+@@ -94,10 +103,10 @@ public:
+         if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
+ 
+         while (!q.empty()) {
+-            getChunk(q.front())->meshDirty = true;
++            dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
+             q.pop();
+         }
+- }
++    }
+ };
+ 
+ 
+diff --git a/src/entities/Player.cpp b/src/entities/Player.cpp
+index 0060421..ddd20e5 100644
+--- a/src/entities/Player.cpp
++++ b/src/entities/Player.cpp
+@@ -4,12 +4,40 @@
+ 
+ #include <format>
+ 
+-#include "../Player.hpp"
++#include "Player.hpp"
++
++#include <ranges>
+ 
+ #include "../Game.hpp"
+ #include "../audio/audio.hpp"
+ #include "../phys/raycast.hpp"
+ 
++constexpr int renderDist = 4;
++
++void Player::iWantToSeeNearbyChunks() const {
++    const Location myLoc = Location::fromGlobalPos(getPos());
++
++    for (int cx = myLoc.chunkPos.x - renderDist; cx < myLoc.chunkPos.x + renderDist; ++cx) {
++        for (int cy = myLoc.chunkPos.y - renderDist; cy < myLoc.chunkPos.y + renderDist; ++cy) {
++            const auto chunkPos = ivec2{cx, cy};
++            if (!level->hasChunk(chunkPos)) {
++                level->createChunk(chunkPos);
++                level->genChunk(chunkPos);
++            }
++        }
++    }
++
++    std::vector<ivec2> keysCopy;
++    for (const auto& k : level->getChunks() | std::views::keys)
++        keysCopy.push_back(k);
++
++    for (const auto& chunkPos: keysCopy) {
++        if (distChebyshev(myLoc.chunkPos, chunkPos) <= renderDist + 1)
++            continue;
++        level->removeChunk(chunkPos);
++    }
++}
++
+ void Player::init() {
+     camera = raylib::Camera3D(
+         glm2rl(getPos() + vec3(0, 2, 0)),
+@@ -26,9 +54,9 @@ void Player::draw() {
+ 
+ void Player::draw2d() {
+     const auto vec = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
+-    raylib::DrawText(std::format("{} {}", vec.x, vec.y), 64, 170, 18, raylib::Color::White());
++    raylib::DrawText(std::format("{} {}", vec.x, vec.y), 8, 170, 18, raylib::Color::White());
+     const auto aabb = getAabb();
+-    raylib::DrawText(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 64, 195, 18, raylib::Color::White());
++    raylib::DrawText(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 8, 195, 18, raylib::Color::White());
+ }
+ 
+ void Player::logic() {
+@@ -36,6 +64,9 @@ void Player::logic() {
+ 
+     // camera.position = glm2rl(getPos());
+ 
++    if (game->debugStats.frame % 30 == 0)
++        iWantToSeeNearbyChunks();
++
+     game->getAudio().updateListener(getEyePos(), getDir());
+     movement();
+ 
+diff --git a/src/entities/Player.hpp b/src/entities/Player.hpp
+index 58fdc4e..4d3a7c7 100644
+--- a/src/entities/Player.hpp
++++ b/src/entities/Player.hpp
+@@ -10,6 +10,8 @@
+ class Player final : public Entity {
+ private:
+     raylib::Camera3D camera;
++
++    void iWantToSeeNearbyChunks() const;
+ public:
+     Player() = delete;
+ 
+diff --git a/src/main.cpp b/src/main.cpp
+index 4350fc3..e3d90b2 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -62,6 +62,7 @@ int main() {
+         game->logic();
+         game->draw();
+ 
++        game->debugStats.frame++;
+         window.EndDrawing();
+     }
+ 
+diff --git a/src/mesher.hpp b/src/mesher.hpp
+index 32c60b7..0e651e1 100644
+--- a/src/mesher.hpp
++++ b/src/mesher.hpp
+@@ -13,6 +13,7 @@
+ #include "utils/utils.hpp"
+ 
+ constexpr int TEXTURE_ATLAS_ITEM_SIZE = 16; // X and Y
++constexpr int TEXTURE_ATLAS_PIXEL_SIZE = 256; // X and Y
+ 
+ constexpr ivec3 CUBE_VERTICES[8] = {
+     {0, 0, 0},
+@@ -47,12 +48,13 @@ inline void addFace(MeshTool& meshTool, const Side &side, const ivec2 atlasOffse
+ 
+     static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
+ 
+-    const float uvOffsetX = atlasOffset.x * uvSize;
+-    const float uvOffsetY = atlasOffset.y * uvSize;
+-    const vec2 uvA = {uvOffsetX,            uvOffsetY + uvSize};
+-    const vec2 uvB = {uvOffsetX + uvSize,   uvOffsetY + uvSize};
+-    const vec2 uvC = {uvOffsetX + uvSize,   uvOffsetY};
+-    const vec2 uvD = {uvOffsetX,            uvOffsetY};
++    const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
++    constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
++
++    const vec2 uvA = {uvOffset.x + inset,            uvOffset.y + uvSize - inset};
++    const vec2 uvB = {uvOffset.x + uvSize - inset,   uvOffset.y + uvSize - inset};
++    const vec2 uvC = {uvOffset.x + uvSize - inset,   uvOffset.y + inset};
++    const vec2 uvD = {uvOffset.x + inset,            uvOffset.y + inset};
+ 
+     meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal));
+ }
+@@ -70,11 +72,22 @@ inline void addVoxel(MeshTool& meshTool, Level* level, const Voxel::Id id, const
+     }
+ }
+ 
+-inline void rebuildDirtyChunks(Level* level) {
++[[noreturn]] inline void chunkerThread(Level* level) {
++    spdlog::info("chunkerThread started");
++
++    std::this_thread::sleep_for(std::chrono::milliseconds(10));
++
+     MeshTool meshTool;
+-    for (auto& [chunkPos, chunk] : level->getChunks()) {
+-        if (!chunk->meshDirty)
++    while (true) {
++        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
++        // std::this_thread::yield();
++        // std::this_thread::sleep_for(std::chrono::duration<float>(1));
++        if (level->dirtyChunksQueue.empty())
+             continue;
++        spdlog::info("chunkerThread runninnggggg");
++
++        const auto& [chunkPos, chunk] = level->dirtyChunksQueue.front();
++        spdlog::info("{} {}", chunkPos.x, chunkPos.y);
+ 
+ #ifdef DEBUG
+         auto t0 = std::chrono::high_resolution_clock::now();
+@@ -94,10 +107,12 @@ inline void rebuildDirtyChunks(Level* level) {
+                 }
+             }
+         }
+-        chunk->mesh = std::make_unique<raylib::Mesh>();
+-        chunk->mesh->boneMatrices = nullptr; // raylib-cpp issue #344
+-        meshTool.exportToMesh(chunk->mesh.get());
+-        chunk->mesh->Upload();
++
++        auto newMesh = std::make_unique<raylib::Mesh>();
++        newMesh->boneMatrices = nullptr; // raylib-cpp issue #344
++        meshTool.exportToMesh(newMesh.get());
++
++        level->chunksReadyToSwapMeshQueue.emplace(chunk, std::move(newMesh));
+ 
+ #ifdef DEBUG
+         auto t1 = std::chrono::high_resolution_clock::now();
+@@ -106,7 +121,14 @@ inline void rebuildDirtyChunks(Level* level) {
+ 
+         chunk->meshDirty = false;
+         spdlog::debug("dirty chunk cleaned");
++
++        level->dirtyChunksQueue.pop();
+     }
+ }
+ 
++inline void startChunkerThread(Level* level) {
++    std::thread thread(chunkerThread, level);
++    thread.detach();
++}
++
+ #endif //VOXELGAME_MESHER_HPP
+diff --git a/src/utils/math.hpp b/src/utils/math.hpp
+index 3753cda..eb9581e 100644
+--- a/src/utils/math.hpp
++++ b/src/utils/math.hpp
+@@ -19,4 +19,8 @@ template <typename T>
+     return static_cast<int>(std::floor(x));
+ }
+ 
++[[nodiscard]] constexpr int distChebyshev(const ivec2& a, const ivec2& b) {
++    return glm::max(glm::abs(a.x - b.x), glm::abs(a.y - b.y));
++}
++
+ #endif //VOXELGAME_MATH_HPP
+\ No newline at end of file
+diff --git a/src/utils/utils.hpp b/src/utils/utils.hpp
+index 96ff4fd..01452be 100644
+--- a/src/utils/utils.hpp
++++ b/src/utils/utils.hpp
+@@ -13,6 +13,7 @@
+ #include <glm/gtx/hash.hpp>
+ 
+ #define ASSERT_AND_RETURN(expression, returnValue) { assert(expression); if (!(expression)) return returnValue; }
++#define ASSERT_AND_RETURN_VOID(expression) ASSERT_AND_RETURN(expression,)
+ 
+ using ivec2 = glm::ivec2;
+ using ivec3 = glm::ivec3;

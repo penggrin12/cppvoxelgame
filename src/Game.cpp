@@ -8,39 +8,11 @@
 #include <memory>
 
 #include "mesher.hpp"
-#include "TestEntity.hpp"
+#include "entities/TestEntity.hpp"
 #include "phys/raycast.hpp"
 #include "utils/noise.hpp"
 
 raylib::Mesh mesh;
-
-void genLevel(Level* level) {
-    // const auto noise = raylib::Image(GenImagePerlinNoise(32, 32, 0, 0, 1.0f));
-    // const SimplexNoise noise{};
-
-    for (int x = -4; x < 4; ++x) {
-        for (int y = -4; y < 4; ++y) {
-            const auto pos = ivec2{x, y};
-            if (level->hasChunk(pos))
-                continue;
-            level->createChunk(pos);
-        }
-    }
-
-    for (int x = 0; x < 32; ++x) {
-        for (int z = 0; z < 32; ++z) {
-            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
-            const auto height = static_cast<int>((noise::at(x, z) / 2.0f + 0.5f) * 16);
-            // printf("%f\n", );
-            for (int y = 0; y < 32; ++y) {
-                if (height < y)
-                    continue;
-
-                level->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
-            }
-        }
-    }
-}
 
 void debugRay(RaycastHit& ray) {
     raylib::DrawText(std::format("{} {} {} {}", ray.hit, ray.normal.x, ray.normal.y, ray.normal.z), 64, 150, 20, raylib::Color::White());
@@ -50,6 +22,8 @@ void Game::initResources() {
     getAudio().cacheSounds("./res/sounds", "dirt.break");
 
     terrainTexture = raylib::Texture("res/textures/terrain.png");
+    terrainTexture.SetWrap(TEXTURE_WRAP_CLAMP);
+    terrainTexture.SetFilter(TEXTURE_FILTER_POINT);
     const auto terrainShader = LoadShader("res/shaders/terrain.vs.glsl", "res/shaders/terrain.fs.glsl");
 
     terrainMaterial = raylib::Material();
@@ -62,13 +36,13 @@ Game::Game(raylib::Window& window) : window(window) {
 
     curLevel = std::make_unique<Level>();
 
+    startChunkerThread(curLevel.get());
+
     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
     player->setPos({8, 20, 8});
     spdlog::debug("player: {}", addEntity(player));
 
     DisableCursor();
-
-    genLevel(curLevel.get());
 }
 
 Game::~Game() = default;
@@ -81,6 +55,13 @@ void Game::logic() {
         std::unique_ptr<Entity> ent = std::make_unique<TestEntity>(curLevel.get());
         ent->setPos(getPlayer().getPos());
         addEntity(ent);
+    }
+
+    while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
+        auto& [chunk, newMesh] = curLevel->chunksReadyToSwapMeshQueue.front();
+        newMesh->Upload();
+        chunk->mesh = std::move(newMesh);
+        curLevel->chunksReadyToSwapMeshQueue.pop();
     }
 }
 
@@ -95,7 +76,6 @@ void Game::draw() {
 
     // drawCube(vec3(0, 5, 0));
 
-    rebuildDirtyChunks(curLevel.get());
     for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
         if (chunk->mesh == nullptr) {
             spdlog::warn("oh no nullptr mesh");

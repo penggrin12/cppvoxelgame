@@ -6,9 +6,37 @@
 
 #include "Player.hpp"
 
-#include "Game.hpp"
-#include "audio/audio.hpp"
-#include "phys/raycast.hpp"
+#include <ranges>
+
+#include "../Game.hpp"
+#include "../audio/audio.hpp"
+#include "../phys/raycast.hpp"
+
+constexpr int renderDist = 4;
+
+void Player::iWantToSeeNearbyChunks() const {
+    const Location myLoc = Location::fromGlobalPos(getPos());
+
+    for (int cx = myLoc.chunkPos.x - renderDist; cx < myLoc.chunkPos.x + renderDist; ++cx) {
+        for (int cy = myLoc.chunkPos.y - renderDist; cy < myLoc.chunkPos.y + renderDist; ++cy) {
+            const auto chunkPos = ivec2{cx, cy};
+            if (!level->hasChunk(chunkPos)) {
+                level->createChunk(chunkPos);
+                level->genChunk(chunkPos);
+            }
+        }
+    }
+
+    std::vector<ivec2> keysCopy;
+    for (const auto& k : level->getChunks() | std::views::keys)
+        keysCopy.push_back(k);
+
+    for (const auto& chunkPos: keysCopy) {
+        if (distChebyshev(myLoc.chunkPos, chunkPos) <= renderDist + 1)
+            continue;
+        level->removeChunk(chunkPos);
+    }
+}
 
 void Player::init() {
     camera = raylib::Camera3D(
@@ -26,15 +54,18 @@ void Player::draw() {
 
 void Player::draw2d() {
     const auto vec = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
-    raylib::DrawText(std::format("{} {}", vec.x, vec.y), 64, 170, 18, raylib::Color::White());
+    raylib::DrawText(std::format("{} {}", vec.x, vec.y), 8, 170, 18, raylib::Color::White());
     const auto aabb = getAabb();
-    raylib::DrawText(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 64, 195, 18, raylib::Color::White());
+    raylib::DrawText(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 8, 195, 18, raylib::Color::White());
 }
 
 void Player::logic() {
     // setPos(rl2glm(camera.position));
 
     // camera.position = glm2rl(getPos());
+
+    if (game->debugStats.frame % 30 == 0)
+        iWantToSeeNearbyChunks();
 
     game->getAudio().updateListener(getEyePos(), getDir());
     movement();

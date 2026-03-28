@@ -9,8 +9,8 @@ project(voxelgame)
 
 set(CMAKE_CXX_STANDARD 26)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG")
 
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-static-libgcc -static-libstdc++ -static -s")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
@@ -25,9 +25,9 @@ add_executable(
         src/main.cpp
         src/Game.hpp
         src/Game.cpp
-        src/Entity.hpp
-        src/Player.cpp
-        src/Player.hpp
+        src/entities/Entity.hpp
+        src/entities/Player.cpp
+        src/entities/Player.hpp
         src/mesher.hpp
         src/utils/utils.hpp
         src/MeshTool.hpp
@@ -36,8 +36,8 @@ add_executable(
         src/voxeldata.hpp
         src/phys/raycast.hpp
         src/phys/AABB.hpp
-        src/TestEntity.cpp
-        src/TestEntity.hpp
+        src/entities/TestEntity.cpp
+        src/entities/TestEntity.hpp
         src/audio/audio.hpp
         src/audio/audio.cpp
         src/Input.hpp

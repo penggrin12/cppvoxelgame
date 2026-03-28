@@ -7,13 +7,15 @@
 #include <memory>
 #include <queue>
 #include <unordered_map>
+#include <spdlog/spdlog.h>
+
 #include "utils/utils.hpp"
 
 #include "voxeldata.hpp"
 #include "phys/AABB.hpp"
 #include "utils/math.hpp"
 
-constexpr int LEVEL_HEIGHT = 32;
+constexpr int LEVEL_HEIGHT = 128;
 constexpr int CHUNK_SIZE = 16; // squared (XZ), Y is as tall as the level
 
 struct Location {
@@ -53,6 +55,8 @@ class Chunk {
 private:
     Voxel::Id voxels[CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE] = {};
 public:
+    ~Chunk() { spdlog::debug("destructing chunk"); }
+
     std::unique_ptr<raylib::Mesh> mesh;
     bool meshDirty = true;
 
@@ -66,10 +70,15 @@ class Level {
 private:
     std::unordered_map<ivec2, std::unique_ptr<Chunk>> chunks;
 public:
+    std::queue<std::pair<ivec2, Chunk*>> dirtyChunksQueue;
+    std::queue<std::pair<Chunk*, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
+
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 
     [[nodiscard]] bool hasChunk(const ivec2& chunkPos) const { return chunks.contains(chunkPos); }
-    void createChunk(const ivec2& chunkPos) { chunks[chunkPos] = std::make_unique<Chunk>(); }
+    void createChunk(const ivec2& chunkPos) { ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos)); chunks[chunkPos] = std::make_unique<Chunk>(); dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));  }
+    void removeChunk(const ivec2& chunkPos) { chunks[chunkPos].reset(); chunks.erase(chunkPos); }
+    void genChunk(const ivec2& chunkPos);
 
     // nullptr if it doesn't exist
     Chunk* getChunk(ivec2 chunkPos);
@@ -82,7 +91,7 @@ public:
 
     std::vector<AABB> getCubes(const AABB& box);
 
-    void markVoxelDirty(const Location& loc) { getChunk(loc.chunkPos)->meshDirty = true; }
+    void markVoxelDirty(const Location& loc) { dirtyChunksQueue.emplace(loc.chunkPos, getChunk(loc.chunkPos)); }
     void markVoxelDirtyAndNeighbours(const Location& loc) {
         std::queue<ivec2> q;
         q.push(loc.chunkPos);
@@ -94,10 +103,10 @@ public:
         if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
 
         while (!q.empty()) {
-            getChunk(q.front())->meshDirty = true;
+            dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
             q.pop();
         }
- }
+    }
 };
 
 

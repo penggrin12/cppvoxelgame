@@ -19,4 +19,8 @@ template <typename T>
     return static_cast<int>(std::floor(x));
 }
 
+[[nodiscard]] constexpr int distChebyshev(const ivec2& a, const ivec2& b) {
+    return glm::max(glm::abs(a.x - b.x), glm::abs(a.y - b.y));
+}
+
 #endif //VOXELGAME_MATH_HPP
