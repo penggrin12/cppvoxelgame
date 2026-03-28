@@ -22,6 +22,10 @@ class Game;
 
 struct GameResources {
     raylib::Font font;
+
+    raylib::Material skyMaterial;
+    raylib::Mesh skyMesh;
+
     raylib::Texture terrainTexture;
     raylib::Material terrainMaterial;
 

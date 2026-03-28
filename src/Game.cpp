@@ -19,6 +19,12 @@ GameResources::GameResources(Game* game) {
 
     font = raylib::Font("res/PressStart2P.ttf");
 
+    skyMaterial = raylib::Material();
+    skyMaterial.SetShader(LoadShader("res/shaders/sky.vs.glsl", "res/shaders/sky.fs.glsl"));
+
+    skyMesh = raylib::Mesh::Sphere(.5, 8, 16);
+    skyMesh.boneMatrices = nullptr;
+
     terrainTexture = raylib::Texture("res/textures/terrain.png");
     terrainTexture.SetWrap(TEXTURE_WRAP_CLAMP);
     terrainTexture.SetFilter(TEXTURE_FILTER_POINT);
@@ -71,9 +77,16 @@ void Game::draw() {
     auto camera = getPlayer().getCamera();
     camera.BeginMode();
 
+    const auto eyePos = getPlayer().getEyePos();
+
+    rlDisableBackfaceCulling();
+    rlDisableDepthMask();
+    res.skyMesh.Draw(res.skyMaterial, raylib::Matrix::Identity().Translate(eyePos.x, eyePos.y, eyePos.z));
+    rlEnableDepthMask();
+    rlEnableBackfaceCulling();
+
     // printf("%f %f %f\n", camera.position.x, camera.position.y, camera.position.z);
 
-    DrawSphere(Vector3(), 0.1f, raylib::Color::Blue());
     // DrawTriangle3D(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1), raylib::Color::Red());
 
     // drawCube(vec3(0, 5, 0));
@@ -92,7 +105,7 @@ void Game::draw() {
 
     DrawLine3D({camera.position.x, camera.position.y - 1.0f, camera.position.z}, camera.target, raylib::Color::Red());
 
-    auto ray = raycast(curLevel.get(), getPlayer().getEyePos(), getPlayer().getDir(), 4.0f);
+    auto ray = raycast(curLevel.get(), eyePos, getPlayer().getDir(), 4.0f);
 
     const auto playerPos = getPlayer().getPos();
     const auto cubes = curLevel->getCubes(AABB(playerPos.x - 0.5f, playerPos.y - 2, playerPos.z - 0.5f, playerPos.x + 0.5f, playerPos.y + 0, playerPos.z + 0.5f));
