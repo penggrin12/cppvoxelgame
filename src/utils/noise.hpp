@@ -15,13 +15,13 @@ namespace noise {
         return fastNoise.GetNoise(x, y);
     }
     inline float at(const glm::vec2& pos) {
-        return at(pos.x, pos.y);
+        return noise::at(pos.x, pos.y);
     }
     inline float at(const int x, const int y) {
-        return at(static_cast<float>(x), static_cast<float>(y));
+        return noise::at(static_cast<float>(x), static_cast<float>(y));
     }
     inline float at(const glm::ivec2& pos) {
-        return at(pos.x, pos.y);
+        return noise::at(pos.x, pos.y);
     }
 }
 

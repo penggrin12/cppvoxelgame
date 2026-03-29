@@ -9,6 +9,7 @@
 
 #include "Input.hpp"
 #include "Level.hpp"
+#include "Mesher.hpp"
 #include "audio/audio.hpp"
 #include "entities/Entity.hpp"
 #include "entities/Player.hpp"
@@ -36,6 +37,7 @@ class Game {
 private:
     GameAudio audio;
     GameInput input;
+    Mesher mesher;
     raylib::Window& window;
 
     std::unique_ptr<Level> curLevel;
@@ -57,6 +59,7 @@ public:
 
     GameAudio& getAudio() { return audio; }
     GameInput& getInput() { return input; }
+    Mesher& getMesher() { return mesher; }
 
     size_t addEntity(std::unique_ptr<Entity>& entity) {
         entities.push_back(std::move(entity));
@@ -71,7 +74,7 @@ public:
     void draw();
 
     void DrawTextB(const std::string& text, const int posX, const int posY, const int fontSize, const raylib::Color color = raylib::Color::White()) const {
-        DrawTextEx(res.font, text, raylib::Vector2{static_cast<float>(posX), static_cast<float>(posY)}, fontSize, 0, color);
+        DrawTextEx(res.font, text, raylib::Vector2{static_cast<float>(posX), static_cast<float>(posY)}, static_cast<float>(fontSize), 0, color);
     }
 };
 

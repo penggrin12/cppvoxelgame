@@ -42,6 +42,8 @@ add_executable(
         src/utils/math.hpp
         src/utils/noise.hpp
         lib/fastnoiselite/FastNoiseLite.h
+        src/entities/Entity.cpp
+        src/Mesher.cpp
 )
 
 target_include_directories(voxelgame PRIVATE

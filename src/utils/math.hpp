@@ -5,6 +5,7 @@
 #ifndef VOXELGAME_MATH_HPP
 #define VOXELGAME_MATH_HPP
 #include <cmath>
+#include <glm/glm.hpp>
 
 [[nodiscard]] constexpr int floorDiv(const int a, const int b) {
     int q = a / b;
@@ -19,7 +20,7 @@ template <typename T>
     return static_cast<int>(std::floor(x));
 }
 
-[[nodiscard]] constexpr int distChebyshev(const ivec2& a, const ivec2& b) {
+[[nodiscard]] constexpr int distChebyshev(const glm::ivec2& a, const glm::ivec2& b) {
     return glm::max(glm::abs(a.x - b.x), glm::abs(a.y - b.y));
 }
 

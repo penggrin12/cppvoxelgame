@@ -21,19 +21,19 @@ namespace rng {
 
     // inclusive to
     [[nodiscard]] inline int range(const int to) {
-        return range(0, to);
+        return rng::range(0, to);
     }
 
     // inclusive to
     template <std::floating_point T, int precision = 1000>
     [[nodiscard]] T range(const T from, const T to) {
-        return static_cast<T>(range(std::lround(from * static_cast<float>(precision)), std::lround(to * static_cast<float>(precision)))) / static_cast<float>(precision);
+        return static_cast<T>(rng::range(std::lround(from * static_cast<float>(precision)), std::lround(to * static_cast<float>(precision)))) / static_cast<float>(precision);
     }
 
     // inclusive to
     template <std::floating_point T, int precision = 1000>
     [[nodiscard]] T range(const T to) {
-        return range<T, precision>(0.0f, to);
+        return rng::range<T, precision>(0.0f, to);
     }
 }
 

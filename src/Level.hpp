@@ -19,13 +19,13 @@ constexpr int LEVEL_HEIGHT = 128;
 constexpr int CHUNK_SIZE = 16; // squared (XZ), Y is as tall as the level
 
 struct Location {
-    ivec3 pos; // position within a chunk, 0..CHUNK_SIZE exclusive
-    ivec2 chunkPos; // Y is Z. the level is a single chunk tall, minecraft style
+    ivec3 pos{}; // position within a chunk, 0..CHUNK_SIZE exclusive
+    ivec2 chunkPos{}; // Y is Z. the level is a single chunk tall, minecraft style
 
     Location(const ivec3& pos, const ivec2& chunkPos) : pos(pos), chunkPos(chunkPos) {}
 
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    Location(const ivec3& globalPos) : pos(), chunkPos() { // NOLINT(*-explicit-constructor)
+    Location(const ivec3& globalPos) { // NOLINT(*-explicit-constructor)
         chunkPos = ivec2{
             floorDiv(globalPos.x, CHUNK_SIZE),
             floorDiv(globalPos.z, CHUNK_SIZE)

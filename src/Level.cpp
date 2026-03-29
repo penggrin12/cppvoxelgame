@@ -8,7 +8,8 @@
 
 #include <ranges>
 
-#include "mesher.hpp"
+#include "Game.hpp"
+#include "Mesher.hpp"
 #include "voxeldata.hpp"
 #include "utils/noise.hpp"
 
@@ -160,7 +161,7 @@ void Level::markChunkDirty(const ivec2 &chunkPos) {
 
 void Level::markChunkDirty(const ivec2 &chunkPos, Chunk* chunk) {
     {
-        std::lock_guard lock(chunkerMtx);
+        std::lock_guard lock(game->getMesher().mtx);
 ;
         for (const auto &otherChunkPos: dirtyChunksQueue._Get_container() | std::views::keys) {
             if (otherChunkPos == chunkPos)
@@ -169,7 +170,7 @@ void Level::markChunkDirty(const ivec2 &chunkPos, Chunk* chunk) {
 
         dirtyChunksQueue.emplace(chunkPos, chunk);
     }
-    chunkerCv.notify_one();
+    game->getMesher().cv.notify_one();
 }
 
 void Level::markVoxelDirty(const Location &loc) {

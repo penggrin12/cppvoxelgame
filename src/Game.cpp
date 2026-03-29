@@ -7,7 +7,7 @@
 #include <format>
 #include <memory>
 
-#include "mesher.hpp"
+#include "Mesher.hpp"
 #include "entities/TestEntity.hpp"
 #include "phys/raycast.hpp"
 #include "utils/noise.hpp"
@@ -42,7 +42,7 @@ void debugRay(RaycastHit& ray) {
 Game::Game(raylib::Window& window) : window(window), res(this) {
     curLevel = std::make_unique<Level>();
 
-    startChunkerThread(curLevel.get());
+    mesher.startThread(curLevel.get());
 
     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
     player->setPos({8, 20, 8});
@@ -52,7 +52,7 @@ Game::Game(raylib::Window& window) : window(window), res(this) {
 }
 
 Game::~Game() {
-    chunkerShouldStop = true;
+    mesher.stopThread();
 }
 
 void Game::logic() {

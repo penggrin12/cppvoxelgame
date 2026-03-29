@@ -4,7 +4,7 @@
 
 #ifndef VOXELGAME_MESHTOOL_HPP
 #define VOXELGAME_MESHTOOL_HPP
-#include <raylib-cpp.hpp>
+#include <raylib.h>
 
 #include "utils/utils.hpp"
 
@@ -37,7 +37,7 @@ public:
         uvs.push_back(uvA); uvs.push_back(uvC); uvs.push_back(uvD);
     }
 
-    void exportToMesh(raylib::Mesh* mesh) const {
+    void exportToMesh(Mesh* mesh) const {
         mesh->vertexCount = vertices.size();
         mesh->vertices = static_cast<float*>(MemAlloc(vertices.size() * 3 * sizeof(float)));
         for (size_t i = 0; i < vertices.size(); i++) {
