@@ -18,6 +18,8 @@
 constexpr int LEVEL_HEIGHT = 128;
 constexpr int CHUNK_SIZE = 16; // squared (XZ), Y is as tall as the level
 
+constexpr static size_t CHUNK_VOXELS_TOTAL = CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE;
+
 struct Location {
     ivec3 pos{}; // position within a chunk, 0..CHUNK_SIZE exclusive
     ivec2 chunkPos{}; // Y is Z. the level is a single chunk tall, minecraft style
@@ -53,10 +55,12 @@ struct Location {
 
 class Chunk {
 private:
-    Voxel::Id voxels[CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE] = {};
+    Voxel::Id voxels[CHUNK_VOXELS_TOTAL] = {};
 public:
     std::unique_ptr<raylib::Mesh> mesh;
     bool meshDirty = true;
+
+    [[nodiscard]] Voxel::Id* getVoxels();
 
     [[nodiscard]] static bool isVoxelInBounds(const ivec3& pos);
     [[nodiscard]] bool isVoxelSolid(const ivec3& pos) const;
@@ -75,7 +79,7 @@ public:
 
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 
-    [[nodiscard]] bool hasChunk(const ivec2& chunkPos);
+    [[nodiscard]] bool hasChunk(const ivec2& chunkPos) const;
     void createChunk(const ivec2& chunkPos);
     void removeChunk(const ivec2& chunkPos);
     void genChunk(const ivec2& chunkPos);

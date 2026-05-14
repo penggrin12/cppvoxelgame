@@ -24,7 +24,11 @@ void Player::iWantToSeeNearbyChunks() const {
             const auto chunkPos = ivec2{cx, cy};
             if (!level->hasChunk(chunkPos)) {
                 level->createChunk(chunkPos);
-                level->genChunk(chunkPos);
+
+                if (game->getStorage().hasChunk(chunkPos))
+                    game->getStorage().loadChunk(chunkPos, level->getChunk(chunkPos));
+                else
+                    level->genChunk(chunkPos);
             }
         }
     }
@@ -40,6 +44,7 @@ void Player::iWantToSeeNearbyChunks() const {
         }
         if (dist <= renderDist + 1)
             continue;
+        game->getStorage().saveChunk(chunkPos, level->getChunk(chunkPos));
         level->removeChunk(chunkPos);
     }
 }
@@ -109,7 +114,7 @@ void Player::movement() {
     const raylib::Vector3 oldCamPos = camera.position;
 
     camera.Update(
-        glm2rl(vec3{-move.y, move.x, 0.0f} * 5.0f * GetFrameTime()),
+        glm2rl(vec3{-move.y, move.x, 0.0f} * (GameInput::keyDown(KEY_LEFT_SHIFT) ? 20.0f : 5.0f) * GetFrameTime()),
         glm2rl(vec3{look.x, look.y, 0.0f}),
         0.0f
     );

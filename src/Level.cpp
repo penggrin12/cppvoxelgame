@@ -26,6 +26,10 @@
     return index;
 }
 
+Voxel::Id* Chunk::getVoxels() {
+    return voxels;
+}
+
 bool Chunk::isVoxelInBounds(const ivec3 &pos) {
     if (pos.x < 0 || pos.x >= CHUNK_SIZE) return false;
     if (pos.y < 0 || pos.y >= LEVEL_HEIGHT) return false;
@@ -50,7 +54,7 @@ void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
 
 /// Level
 
-bool Level::hasChunk(const ivec2 &chunkPos) {
+bool Level::hasChunk(const ivec2 &chunkPos) const {
     return chunks.contains(chunkPos);
 }
 

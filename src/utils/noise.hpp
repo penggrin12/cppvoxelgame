@@ -9,7 +9,7 @@
 #include "fastnoiselite/FastNoiseLite.h"
 
 namespace noise {
-    inline FastNoiseLite fastNoise{static_cast<int>(std::time(nullptr))};
+    inline FastNoiseLite fastNoise{0};
 
     inline float at(const float x, const float y) {
         return fastNoise.GetNoise(x, y);

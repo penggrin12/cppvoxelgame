@@ -13,6 +13,8 @@
 #include "audio/audio.hpp"
 #include "entities/Entity.hpp"
 #include "entities/Player.hpp"
+#include "storage/BasicStorage.hpp"
+#include "storage/Storage.hpp"
 
 struct DebugStats {
     uint64_t frame = 0;
@@ -35,6 +37,7 @@ struct GameResources {
 
 class Game {
 private:
+    std::unique_ptr<Storage> storage = std::make_unique<BasicStorage>("test");
     GameAudio audio;
     GameInput input;
     Mesher mesher;
@@ -57,9 +60,10 @@ public:
 
     [[nodiscard]] Level* getCurrLevel() const { return curLevel.get(); }
 
-    GameAudio& getAudio() { return audio; }
-    GameInput& getInput() { return input; }
-    Mesher& getMesher() { return mesher; }
+    [[nodiscard]] Storage& getStorage() const { return *storage; }
+    [[nodiscard]] GameAudio& getAudio() { return audio; }
+    [[nodiscard]] GameInput& getInput() { return input; }
+    [[nodiscard]] Mesher& getMesher() { return mesher; }
 
     size_t addEntity(std::unique_ptr<Entity>& entity) {
         entities.push_back(std::move(entity));

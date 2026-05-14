@@ -15,6 +15,7 @@ add_compile_definitions(
 find_package(glfw3 CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(ZLIB REQUIRED)
 
 add_executable(
         voxelgame
@@ -44,15 +45,20 @@ add_executable(
         lib/fastnoiselite/FastNoiseLite.h
         src/entities/Entity.cpp
         src/Mesher.cpp
+        src/storage/Storage.cpp
+        src/storage/Storage.hpp
+        src/storage/BasicStorage.cpp
+        src/storage/BasicStorage.hpp
 )
 
 target_include_directories(voxelgame PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/lib
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 #target_compile_definitions(voxelgame PRIVATE "$<$<CONFIG:_DEBUG>:_DEBUG>")
-target_link_libraries(voxelgame PRIVATE raylib glfw winmm spdlog::spdlog)
+target_link_libraries(voxelgame PRIVATE raylib glfw winmm spdlog::spdlog ZLIB::ZLIB)
 
 add_custom_target(copy_res ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory

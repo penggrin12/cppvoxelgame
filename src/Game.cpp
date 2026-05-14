@@ -53,6 +53,10 @@ Game::Game(raylib::Window& window) : window(window), res(this) {
 
 Game::~Game() {
     mesher.stopThread();
+
+    for (auto& [chunkPos, chunk]: curLevel->getChunks()) {
+        getStorage().saveChunk(chunkPos, chunk.get());
+    }
 }
 
 void Game::logic() {
