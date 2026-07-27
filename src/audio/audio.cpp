@@ -2,16 +2,24 @@
 // Created by penggrin on 21.03.2026.
 //
 
-#define WIN32_LEAN_AND_MEAN
-#define NOGDI
-#define NOUSER
+#if defined(_WIN32)
+    #define WIN32_LEAN_AND_MEAN
+    #define NOGDI
+    #define NOUSER
+#endif
 
 #define MINIAUDIO_IMPLEMENTATION
 #include <format>
 #include <memory>
 #include <miniaudio.h>
 #include <ranges>
-#include <raylib-cpp/Functions.hpp>
+
+#if defined(_WIN32)
+    #undef near
+    #undef far
+#endif
+
+#include <raylib-cpp.hpp>
 
 #include "audio.hpp"
 

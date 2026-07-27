@@ -1,64 +1,59 @@
-﻿# generator must be "MinGW Makefiles" if not using MSVC for whatever reason
-
-cmake_minimum_required(VERSION 4.0)
+﻿cmake_minimum_required(VERSION 3.28)
 
 project(voxelgame)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(BUILD_SHARED_LIBS OFF)
 
-add_compile_definitions(
-        $<$<CONFIG:Debug>:DEBUG>
-        $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>
-        $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
+include(FetchContent)
+
+function(FETCH NAME REPO TAG)
+    FetchContent_Declare(${NAME}
+        GIT_REPOSITORY ${REPO}
+        GIT_TAG ${TAG}
+        GIT_SHALLOW 1
+    )
+    FetchContent_MakeAvailable(${NAME})
+endfunction()
+
+FETCH(miniaudio https://github.com/mackron/miniaudio.git master)
+FETCH(glm https://github.com/g-truc/glm.git master)
+FETCH(raylib https://github.com/raysan5/raylib.git master)
+FETCH(raylib_cpp https://github.com/RobLoach/raylib-cpp.git master)
+FETCH(spdlog https://github.com/gabime/spdlog.git v1.x)
+FETCH(zlib https://github.com/madler/zlib.git master)
+FETCH(gzip_hpp https://github.com/LimiNode/gzip-hpp.git main)
+
+file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
+    "src/*.cpp"
+    "src/*.hpp"
+    "src/*.h"
+    "lib/*.cpp"
+    "lib/*.h"
 )
-
-find_package(glfw3 CONFIG REQUIRED)
-find_package(raylib CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(ZLIB REQUIRED)
-
-add_executable(
-        voxelgame
-        src/main.cpp
-        src/Game.hpp
-        src/Game.cpp
-        src/entities/Entity.hpp
-        src/entities/Player.cpp
-        src/entities/Player.hpp
-        src/mesher.hpp
-        src/utils/utils.hpp
-        src/MeshTool.hpp
-        src/Level.cpp
-        src/Level.hpp
-        src/voxeldata.hpp
-        src/phys/raycast.hpp
-        src/phys/AABB.hpp
-        src/entities/TestEntity.cpp
-        src/entities/TestEntity.hpp
-        src/audio/audio.hpp
-        src/audio/audio.cpp
-        src/Input.hpp
-        lib/rcamera.h
-        src/utils/random.hpp
-        src/utils/math.hpp
-        src/utils/noise.hpp
-        lib/fastnoiselite/FastNoiseLite.h
-        src/entities/Entity.cpp
-        src/Mesher.cpp
-        src/storage/Storage.cpp
-        src/storage/Storage.hpp
-        src/storage/BasicStorage.cpp
-        src/storage/BasicStorage.hpp
-)
+add_executable(voxelgame ${GAME_SOURCES})
 
 target_include_directories(voxelgame PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/lib
-        ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
-#target_compile_definitions(voxelgame PRIVATE "$<$<CONFIG:_DEBUG>:_DEBUG>")
-target_link_libraries(voxelgame PRIVATE raylib glfw winmm spdlog::spdlog ZLIB::ZLIB)
+target_compile_definitions(voxelgame PRIVATE
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>
+    $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
+)
+
+target_link_libraries(voxelgame PRIVATE
+    miniaudio
+    glm
+    raylib
+    raylib_cpp
+    spdlog::spdlog
+    zlibstatic
+    gzip_hpp
+)
 
 add_custom_target(copy_res ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory

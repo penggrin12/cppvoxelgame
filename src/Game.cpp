@@ -23,7 +23,6 @@ GameResources::GameResources(Game* game) {
     skyMaterial.SetShader(LoadShader("res/shaders/sky.vs.glsl", "res/shaders/sky.fs.glsl"));
 
     skyMesh = raylib::Mesh::Sphere(.5, 8, 16);
-    skyMesh.boneMatrices = nullptr;
 
     terrainTexture = raylib::Texture("res/textures/terrain.png");
     terrainTexture.SetWrap(TEXTURE_WRAP_CLAMP);

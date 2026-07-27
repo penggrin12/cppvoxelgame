@@ -76,7 +76,6 @@ void Mesher::chunkerThread(Level *level) {
         }
 
         auto newMesh = std::make_unique<raylib::Mesh>();
-        newMesh->boneMatrices = nullptr; // raylib-cpp issue #344
         meshTool.exportToMesh(newMesh.get());
 
         level->chunksReadyToSwapMeshQueue.emplace(chunk, std::move(newMesh));
