@@ -4,11 +4,56 @@
 
 #include "Mesher.hpp"
 
-void Mesher::addFace(MeshTool& meshTool, const Side &side, const ivec2& atlasOffset, const ivec3& offset) {
-    const ivec3 a = CUBE_VERTICES[side.v0] + offset;
-    const ivec3 b = CUBE_VERTICES[side.v1] + offset;
-    const ivec3 c = CUBE_VERTICES[side.v2] + offset;
-    const ivec3 d = CUBE_VERTICES[side.v3] + offset;
+constexpr int Mesher::ao(const int side1, const int side2, const int corner) {
+    if (side1 + side2 == 2)
+        return 0;
+    return 3 - (side1 + side2 + corner);
+}
+
+glm::vec4 Mesher::getAo(const Side &side, Level *level, const Location &loc) {
+    glm::vec4 aos;
+    const int vertices[4] = {side.v0, side.v1, side.v2, side.v3};
+
+    for (int i = 0; i < 4; ++i) {
+        glm::ivec3 vertex = CUBE_VERTICES[vertices[i]];
+
+        glm::ivec3 D = vertex * 2 - glm::ivec3(1, 1, 1);
+        glm::ivec3 T = D - side.normal;
+
+        glm::ivec3 side1Offset = T;
+        glm::ivec3 side2Offset = T;
+
+        if (T.x != 0) {
+            if (T.y != 0) {
+                side1Offset.y = 0; side2Offset.x = 0;
+            } else {
+                side1Offset.z = 0; side2Offset.x = 0;
+            }
+        } else {
+            side1Offset.z = 0; side2Offset.y = 0;
+        }
+
+        Voxel::Id side1 = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + side1Offset);
+        Voxel::Id side2 = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + side2Offset);
+        Voxel::Id corner = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + T);
+
+        int aoVal = ao(
+            Voxel::isSolid(side1) ? 1 : 0,
+            Voxel::isSolid(side2) ? 1 : 0,
+            Voxel::isSolid(corner) ? 1 : 0
+        );
+
+        aos[i] = AO_VALUES[aoVal];
+    }
+
+    return aos;
+}
+
+void Mesher::addFace(MeshTool &meshTool, Level *level, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
+    const ivec3 a = CUBE_VERTICES[side.v0] + loc.pos;
+    const ivec3 b = CUBE_VERTICES[side.v1] + loc.pos;
+    const ivec3 c = CUBE_VERTICES[side.v2] + loc.pos;
+    const ivec3 d = CUBE_VERTICES[side.v3] + loc.pos;
 
     static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
 
@@ -20,18 +65,22 @@ void Mesher::addFace(MeshTool& meshTool, const Side &side, const ivec2& atlasOff
     const vec2 uvC = {uvOffset.x + uvSize - inset,   uvOffset.y + inset};
     const vec2 uvD = {uvOffset.x + inset,            uvOffset.y + inset};
 
-    meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal));
+    const glm::vec4 ao = getAo(side, level, loc);
+    // glm::vec4 ao = glm::vec4(1);
+
+    meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal), ao);
 }
 
-void Mesher::addVoxel(MeshTool &meshTool, Level *level, const Voxel::Id id, const ivec2 &chunkPos, const ivec3 &pos) {
+void Mesher::addVoxel(MeshTool &meshTool, Level *level, const Voxel::Id id, const Location &loc) {
     for (int i = 0; i < sizeof(CUBE_SIDES) / sizeof(Side); ++i) {
         const auto sideNormal = CUBE_SIDES[i].normal;
-        const auto sideLoc = Location::fromGlobalPos(ivec3{pos.x + chunkPos.x * CHUNK_SIZE + sideNormal.x, pos.y + sideNormal.y, pos.z + chunkPos.y * CHUNK_SIZE + sideNormal.z});
+        // const auto sideLoc = Location::fromGlobalPos(ivec3{pos.x + chunkPos.x * CHUNK_SIZE + sideNormal.x, pos.y + sideNormal.y, pos.z + chunkPos.y * CHUNK_SIZE + sideNormal.z});
+        const auto sideLoc = Location::fromGlobalPos(loc.getGlobalPos() + sideNormal);
         assert(level->hasChunk(sideLoc.chunkPos));
         if (level->isVoxelSolid(sideLoc))
             continue;
 
-        addFace(meshTool, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], pos);
+        addFace(meshTool, level, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], loc);
     }
 }
 
@@ -70,7 +119,7 @@ void Mesher::chunkerThread(Level *level) {
                     if (voxel == Voxel::AIR)
                         continue;
 
-                    addVoxel(meshTool, level, voxel, chunkPos, pos);
+                    addVoxel(meshTool, level, voxel, Location(pos, chunkPos));
                 }
             }
         }

@@ -23,28 +23,34 @@ constexpr ivec3 CUBE_VERTICES[8] = {
 };
 
 struct Side {
+    int i;
     int v0, v1, v2, v3;
     ivec3 normal;
 };
 
-constexpr Side SIDE_FRONT  = {4, 5, 6, 7, { 0,  0,  1}};
-constexpr Side SIDE_BACK   = {1, 0, 3, 2, { 0,  0, -1}};
-constexpr Side SIDE_LEFT   = {0, 4, 7, 3, {-1,  0,  0}};
-constexpr Side SIDE_RIGHT  = {5, 1, 2, 6, { 1,  0,  0}};
-constexpr Side SIDE_TOP    = {7, 6, 2, 3, { 0,  1,  0}};
-constexpr Side SIDE_BOTTOM = {0, 1, 5, 4, { 0, -1,  0}};
+constexpr Side SIDE_FRONT  = {0, 4, 5, 6, 7, { 0,  0,  1}};
+constexpr Side SIDE_BACK   = {1, 1, 0, 3, 2, { 0,  0, -1}};
+constexpr Side SIDE_LEFT   = {2, 0, 4, 7, 3, {-1,  0,  0}};
+constexpr Side SIDE_RIGHT  = {3, 5, 1, 2, 6, { 1,  0,  0}};
+constexpr Side SIDE_TOP    = {4, 7, 6, 2, 3, { 0,  1,  0}};
+constexpr Side SIDE_BOTTOM = {5, 0, 1, 5, 4, { 0, -1,  0}};
 
 constexpr Side CUBE_SIDES[6] = {SIDE_TOP, SIDE_BOTTOM, SIDE_LEFT, SIDE_RIGHT, SIDE_BACK, SIDE_FRONT};
+
+constexpr float AO_VALUES[4] = {0.4f, 0.6f, 0.8f, 1.0f};
 
 class Mesher {
 private:
     bool shouldStop = false;
+
+    constexpr static int ao(int side1, int side2, int corner);
+    static glm::vec4 getAo(const Side &side, Level *level, const Location &loc);
 public:
     std::mutex mtx;
     std::condition_variable cv;
 
-    static void addFace(MeshTool& meshTool, const Side &side, const glm::ivec2& atlasOffset, const glm::ivec3& offset);
-    static void addVoxel(MeshTool& meshTool, Level* level, Voxel::Id id, const glm::ivec2& chunkPos, const glm::ivec3& pos);
+    static void addFace(MeshTool &meshTool, Level *level, const Side &side, const glm::ivec2 &atlasOffset, const Location &loc);
+    static void addVoxel(MeshTool &meshTool, Level *level, Voxel::Id id, const Location &loc);
 
     void chunkerThread(Level* level);
     void startThread(Level* level);

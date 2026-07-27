@@ -117,6 +117,12 @@ bool Level::isVoxelSolid(const Location &loc) {
     return chunk->getVoxel(loc.pos);
 }
 
+[[nodiscard]] Voxel::Id Level::getVoxelOrAir(const Location &loc) {
+    if (!isVoxelInBounds(loc))
+        return Voxel::AIR;
+    return getVoxel(loc);
+}
+
 void Level::setVoxel(const Location& loc, const Voxel::Id voxel) {
     const auto chunk = getChunk(loc.chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)

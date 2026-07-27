@@ -15,6 +15,10 @@ namespace Voxel {
 #undef VOXEL
         MAX
     };
+
+    constexpr bool isSolid(const Id &id) {
+        return id > 0;
+    }
 }
 
 constexpr ivec2 VOXEL_ATLAS_OFFSETS[Voxel::MAX][6] = {

@@ -91,6 +91,7 @@ public:
     [[nodiscard]] bool isVoxelSolid(const Location& loc);
 
     [[nodiscard]] Voxel::Id getVoxel(const Location& loc);
+    [[nodiscard]] Voxel::Id getVoxelOrAir(const Location &loc);
     void setVoxel(const Location& loc, Voxel::Id voxel);
 
     std::vector<AABB> getCubes(const AABB& box);

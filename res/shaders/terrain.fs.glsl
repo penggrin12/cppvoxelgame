@@ -18,9 +18,9 @@ void main()
 {
     vec4 texelColor = texture(texture0, fragTexCoord);
 
-    float light = abs(fragNormal.y) * 1.0 +
+    float flatShading = abs(fragNormal.y) * 1.0 +
         abs(fragNormal.x) * 0.8 +
         abs(fragNormal.z) * 0.6;
 
-    finalColor = vec4(texelColor.rgb * light, 1.0);
+    finalColor = vec4(texelColor.rgb * fragColor.rgb * flatShading, 1.0);
 }
