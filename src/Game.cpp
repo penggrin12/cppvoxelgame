@@ -59,7 +59,7 @@ Game::~Game() {
 }
 
 void Game::logic() {
-    for (const auto& entity: entities)
+    for (const auto &entity: entities)
         entity->logic();
 
     if (raylib::Keyboard::IsKeyPressed(KEY_E)) {
@@ -97,7 +97,7 @@ void Game::draw() {
         chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
     }
 
-    for (const auto& entity: entities)
+    for (const auto &entity: entities)
         entity->draw();
 
     DrawLine3D({camera.position.x, camera.position.y - 1.0f, camera.position.z}, camera.target, raylib::Color::Red());
@@ -106,13 +106,13 @@ void Game::draw() {
 
     const auto playerPos = getPlayer().getPos();
     const auto cubes = curLevel->getCubes(AABB(playerPos.x - 0.5f, playerPos.y - 2, playerPos.z - 0.5f, playerPos.x + 0.5f, playerPos.y + 0, playerPos.z + 0.5f));
-    for (const auto& cube: cubes) {
+    for (const auto &cube: cubes) {
         debugDrawAABB(cube);
     }
 
     camera.EndMode();
 
-    for (const auto& entity: entities)
+    for (const auto &entity: entities)
         entity->draw2d();
 
     debugRay(ray);
@@ -123,7 +123,7 @@ void Game::draw() {
 void Game::drawDebug() {
     int posY = 22;
 
-    auto drawText = [&posY, this](const std::string& text, const raylib::Color color = raylib::Color::White())
+    auto drawText = [&posY, this](const std::string &text, const raylib::Color color = raylib::Color::White())
     {
         const auto height = (std::count(text.begin(), text.end(), '\n') + 1) * 22;
         raylib::DrawTextEx(res.font, text, raylib::Vector2{2, static_cast<float>(posY)}, 12, 0, color);

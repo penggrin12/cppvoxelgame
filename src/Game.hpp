@@ -77,11 +77,11 @@ public:
     void logic();
     void draw();
 
-    void DrawTextB(const std::string& text, const int posX, const int posY, const int fontSize, const raylib::Color color = raylib::Color::White()) const {
+    void DrawTextB(const std::string &text, const int posX, const int posY, const int fontSize, const raylib::Color color = raylib::Color::White()) const {
         DrawTextEx(res.font, text, raylib::Vector2{static_cast<float>(posX), static_cast<float>(posY)}, static_cast<float>(fontSize), 0, color);
     }
 };
 
-inline Game* game = nullptr;
+inline Game *game = nullptr;
 
 #endif //VOXELGAME_GAME_HPP

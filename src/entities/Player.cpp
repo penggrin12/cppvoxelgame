@@ -34,10 +34,10 @@ void Player::iWantToSeeNearbyChunks() const {
     }
 
     std::vector<ivec2> keysCopy;
-    for (const auto& k : level->getChunks() | std::views::keys)
+    for (const auto &k : level->getChunks() | std::views::keys)
         keysCopy.push_back(k);
 
-    for (const auto& chunkPos: keysCopy) {
+    for (const auto &chunkPos: keysCopy) {
         const auto dist = distChebyshev(myLoc.chunkPos, chunkPos);
         if ((dist < renderDist - 1) && (level->getChunk(chunkPos)->mesh == nullptr)) {
             level->markChunkDirty(chunkPos);

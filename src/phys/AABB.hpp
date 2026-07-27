@@ -65,7 +65,7 @@ public:
         return {x0 + xa, y0 + ya, z0 + za, x1 + xa, y1 + ya, z1 + za};
     }
 
-    [[nodiscard]] constexpr float clipXCollide(const AABB& c, float xa) const {
+    [[nodiscard]] constexpr float clipXCollide(const AABB &c, float xa) const {
         if (c.y1 <= y0 || c.y0 >= y1) return xa;
         if (c.z1 <= z0 || c.z0 >= z1) return xa;
 
@@ -81,7 +81,7 @@ public:
         return xa;
     }
 
-    [[nodiscard]] constexpr float clipYCollide(const AABB& c, float ya) const {
+    [[nodiscard]] constexpr float clipYCollide(const AABB &c, float ya) const {
         if (c.x1 <= x0 || c.x0 >= x1) return ya;
         if (c.z1 <= z0 || c.z0 >= z1) return ya;
 
@@ -97,7 +97,7 @@ public:
         return ya;
     }
 
-    [[nodiscard]] constexpr float clipZCollide(const AABB& c, float za) const {
+    [[nodiscard]] constexpr float clipZCollide(const AABB &c, float za) const {
         if (c.x1 <= x0 || c.x0 >= x1) return za;
         if (c.y1 <= y0 || c.y0 >= y1) return za;
 
@@ -113,14 +113,14 @@ public:
         return za;
     }
 
-    [[nodiscard]] constexpr bool intersects(const AABB& c) const {
+    [[nodiscard]] constexpr bool intersects(const AABB &c) const {
         if (c.x1 <= x0 || c.x0 >= x1) return false;
         if (c.y1 <= y0 || c.y0 >= y1) return false;
         if (c.z1 <= z0 || c.z0 >= z1) return false;
         return true;
     }
 
-    [[nodiscard]] constexpr bool intersectsInner(const AABB& c) const {
+    [[nodiscard]] constexpr bool intersectsInner(const AABB &c) const {
         if (c.x1 < x0 || c.x0 > x1) return false;
         if (c.y1 < y0 || c.y0 > y1) return false;
         if (c.z1 < z0 || c.z0 > z1) return false;
@@ -144,7 +144,7 @@ public:
         return true;
     }
 
-    [[nodiscard]] constexpr bool contains(const vec3& p) const {
+    [[nodiscard]] constexpr bool contains(const vec3 &p) const {
         if (p.x <= x0 || p.x >= x1) return false;
         if (p.y <= y0 || p.y >= y1) return false;
         if (p.z <= z0 || p.z >= z1) return false;
@@ -166,7 +166,7 @@ public:
         return {x0, y0, z0, x1, y1, z1};
     }
 
-    [[nodiscard]] constexpr HitResult clip(const vec3& a, const vec3& b) const {
+    [[nodiscard]] constexpr HitResult clip(const vec3 &a, const vec3 &b) const {
         vec3 xh0, xh1, yh0, yh1, zh0, zh1;
 
         bool bxh0 = clipAxis<Axis::X>(a, b, x0, xh0);
@@ -185,7 +185,7 @@ public:
         if (!bzh0 || !containsZ(&zh0)) bzh0 = false;
         if (!bzh1 || !containsZ(&zh1)) bzh1 = false;
 
-        vec3* closest = nullptr;
+        vec3 *closest = nullptr;
 
         if (bxh0 && (closest == nullptr || distSqr(a, xh0) < distSqr(a, *closest))) closest = &xh0;
         if (bxh1 && (closest == nullptr || distSqr(a, xh1) < distSqr(a, *closest))) closest = &xh1;
@@ -214,20 +214,20 @@ public:
     }
 
 private:
-    [[nodiscard]] bool containsX(const vec3* v) const {
+    [[nodiscard]] bool containsX(const vec3 *v) const {
         return v->y >= y0 && v->y <= y1 && v->z >= z0 && v->z <= z1;
     }
 
-    [[nodiscard]] bool containsY(const vec3* v) const {
+    [[nodiscard]] bool containsY(const vec3 *v) const {
         return v->x >= x0 && v->x <= x1 && v->z >= z0 && v->z <= z1;
     }
 
-    [[nodiscard]] bool containsZ(const vec3* v) const {
+    [[nodiscard]] bool containsZ(const vec3 *v) const {
         return v->x >= x0 && v->x <= x1 && v->y >= y0 && v->y <= y1;
     }
 
 public:
-    void set(const AABB& other) {
+    void set(const AABB &other) {
         x0 = other.x0; y0 = other.y0; z0 = other.z0;
         x1 = other.x1; y1 = other.y1; z1 = other.z1;
     }

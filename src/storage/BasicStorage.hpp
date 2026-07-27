@@ -18,13 +18,13 @@ protected:
     const gzip::Compressor comp;
     const gzip::Decompressor decomp;
 
-    [[nodiscard]] std::filesystem::path getChunkPath(const glm::ivec2& chunkPos) const;
+    [[nodiscard]] std::filesystem::path getChunkPath(const glm::ivec2 &chunkPos) const;
 public:
-    explicit BasicStorage(const std::string& saveName);
+    explicit BasicStorage(const std::string &saveName);
 
-    [[nodiscard]] bool hasChunk(const glm::ivec2& chunkPos) override;
-    void loadChunk(const glm::ivec2& chunkPos, Chunk *chunk) override;
-    void saveChunk(const glm::ivec2& chunkPos, Chunk *chunk) override;
+    [[nodiscard]] bool hasChunk(const glm::ivec2 &chunkPos) override;
+    void loadChunk(const glm::ivec2 &chunkPos, Chunk *chunk) override;
+    void saveChunk(const glm::ivec2 &chunkPos, Chunk *chunk) override;
 };
 
 

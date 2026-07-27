@@ -28,7 +28,7 @@ enum class Axis : int {
 };
 
 template <Axis axis>
-[[nodiscard]] constexpr bool clipAxis(const glm::vec3& start, const glm::vec3& end, const float target, glm::vec3& result) {
+[[nodiscard]] constexpr bool clipAxis(const glm::vec3 &start, const glm::vec3 &end, const float target, glm::vec3 &result) {
     constexpr int i = static_cast<int>(axis);
     const float deltaAxis = end[i] - start[i];
 
@@ -44,13 +44,13 @@ template <Axis axis>
     return true;
 }
 
-[[nodiscard]] constexpr float distSqr(const glm::vec3& a, const glm::vec3& b) {
+[[nodiscard]] constexpr float distSqr(const glm::vec3 &a, const glm::vec3 &b) {
     const vec3 diff = a - b;
     return glm::dot(diff, diff);
 }
 
 template <typename T>
-constexpr T normalize(const T& vec) {
+constexpr T normalize(const T &vec) {
     if (glm::length(vec) <= 0.00001)
         return glm::zero<T>();
     return glm::normalize(vec);
@@ -63,7 +63,7 @@ constexpr T normalize(const T& vec) {
 #  define CONSTEXPR_IF_SUPPORTED constexpr
 #endif
 
-inline CONSTEXPR_IF_SUPPORTED raylib::Vector3 glm2rl(const glm::vec3& v) { return {v.x, v.y, v.z}; }
+inline CONSTEXPR_IF_SUPPORTED raylib::Vector3 glm2rl(const glm::vec3 &v) { return {v.x, v.y, v.z}; }
 inline CONSTEXPR_IF_SUPPORTED glm::vec3 rl2glm(const raylib::Vector3& v) { return {v.x, v.y, v.z}; }
 
 #undef CONSTEXPR_IF_SUPPORTED

@@ -12,9 +12,9 @@ class Storage {
 public:
     virtual ~Storage() = default;
 
-    [[nodiscard]] virtual bool hasChunk(const glm::ivec2& chunkPos) = 0;
-    virtual void loadChunk(const glm::ivec2& chunkPos, Chunk* chunk) = 0;
-    virtual void saveChunk(const glm::ivec2& chunkPos, Chunk* chunk) = 0;
+    [[nodiscard]] virtual bool hasChunk(const glm::ivec2 &chunkPos) = 0;
+    virtual void loadChunk(const glm::ivec2 &chunkPos, Chunk *chunk) = 0;
+    virtual void saveChunk(const glm::ivec2 &chunkPos, Chunk *chunk) = 0;
 };
 
 #endif //VOXELGAME_STORAGE_HPP

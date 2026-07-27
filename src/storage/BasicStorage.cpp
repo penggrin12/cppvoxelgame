@@ -11,20 +11,20 @@
 
 const auto BASE_DIR = std::filesystem::path("saves/");
 
-std::filesystem::path BasicStorage::getChunkPath(const glm::ivec2& chunkPos) const {
+std::filesystem::path BasicStorage::getChunkPath(const glm::ivec2 &chunkPos) const {
     return CHUNKS_SAVE_DIR / std::format("{}.{}.bin", chunkPos.x, chunkPos.y);
 }
 
-BasicStorage::BasicStorage(const std::string& saveName) : BASE_SAVE_DIR(BASE_DIR / saveName), CHUNKS_SAVE_DIR(BASE_SAVE_DIR / "chunks") {
+BasicStorage::BasicStorage(const std::string &saveName) : BASE_SAVE_DIR(BASE_DIR / saveName), CHUNKS_SAVE_DIR(BASE_SAVE_DIR / "chunks") {
     if (!std::filesystem::exists(CHUNKS_SAVE_DIR))
         std::filesystem::create_directories(CHUNKS_SAVE_DIR);
 }
 
-bool BasicStorage::hasChunk(const glm::ivec2& chunkPos) {
+bool BasicStorage::hasChunk(const glm::ivec2 &chunkPos) {
     return std::filesystem::exists(getChunkPath(chunkPos));
 }
 
-void BasicStorage::loadChunk(const glm::ivec2& chunkPos, Chunk* chunk) {
+void BasicStorage::loadChunk(const glm::ivec2 &chunkPos, Chunk *chunk) {
     const auto filePath = getChunkPath(chunkPos);
     const auto fileSize = std::filesystem::file_size(filePath);
 
@@ -43,7 +43,7 @@ void BasicStorage::loadChunk(const glm::ivec2& chunkPos, Chunk* chunk) {
     delete[] buff;
 }
 
-void BasicStorage::saveChunk(const glm::ivec2& chunkPos, Chunk* chunk) {
+void BasicStorage::saveChunk(const glm::ivec2 &chunkPos, Chunk *chunk) {
     std::string dataOut;
     comp.compress(dataOut, reinterpret_cast<char*>(chunk->getVoxels()), CHUNK_VOXELS_TOTAL);
 

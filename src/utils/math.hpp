@@ -20,7 +20,7 @@ template <typename T>
     return static_cast<int>(std::floor(x));
 }
 
-[[nodiscard]] constexpr int distChebyshev(const glm::ivec2& a, const glm::ivec2& b) {
+[[nodiscard]] constexpr int distChebyshev(const glm::ivec2 &a, const glm::ivec2 &b) {
     return glm::max(glm::abs(a.x - b.x), glm::abs(a.y - b.y));
 }
 

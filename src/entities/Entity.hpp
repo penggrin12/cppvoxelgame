@@ -14,7 +14,7 @@ class Entity {
 protected:
     vec3 pos = {0, 0, 0};
     AABB bb = {0, 0, 0, 0, 0, 0};
-    Level* level;
+    Level *level;
 public:
     bool onGround = false;
 
@@ -22,12 +22,12 @@ public:
     explicit Entity(Level* level) : level(level) {}
     virtual ~Entity() = default;
 
-    [[nodiscard]] AABB* getAabb() { return &bb; }
+    [[nodiscard]] AABB *getAabb() { return &bb; }
 
     [[nodiscard]] vec3 getPos() const { return pos; }
-    void setPos(const vec3& newPos);
+    void setPos(const vec3 &newPos);
 
-    void translate(const vec3& by) { setPos(pos + by); }
+    void translate(const vec3 &by) { setPos(pos + by); }
 
     virtual void init() {}
 

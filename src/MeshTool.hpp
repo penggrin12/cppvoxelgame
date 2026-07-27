@@ -42,7 +42,7 @@ public:
         static constexpr int defaultIndices[6] = {0, 1, 2, 0, 2, 3};
         static constexpr int flippedIndices[6] = {1, 2, 3, 0, 1, 3};
 
-        const int* indices = (light[0] + light[2] < light[1] + light[3]) ? flippedIndices : defaultIndices;
+        const int *indices = (light[0] + light[2] < light[1] + light[3]) ? flippedIndices : defaultIndices;
 
         for (int i = 0; i < 6; ++i) {
             const int idx = indices[i];

@@ -61,7 +61,7 @@ void GameAudio::updateListener(const glm::vec3 &pos, const glm::vec3 &dir) const
 }
 
 void GameAudio::cacheSounds(const std::string &path, const std::string &prefix) const {
-    for (const auto& filePath: raylib::LoadDirectoryFiles(path)) {
+    for (const auto &filePath: raylib::LoadDirectoryFiles(path)) {
         auto fileName = raylib::GetFileName(filePath);
         if (!fileName.starts_with(prefix))
             continue;
@@ -75,7 +75,7 @@ void GameAudio::cacheSounds(const std::string &path, const std::string &prefix) 
     }
 }
 
-[[nodiscard]] void* GameAudio::getSound(const std::string &prefix) const {
+[[nodiscard]] void *GameAudio::getSound(const std::string &prefix) const {
     return impl->cachedSounds[prefix][rand() % impl->cachedSounds[prefix].size()].get();
 }
 
@@ -86,7 +86,7 @@ void GameAudio::playSound(const std::string &prefix) const {
     ma_sound_start(sound);
 }
 
-void GameAudio::playSound(const std::string &prefix, const glm::vec3& pos) const {
+void GameAudio::playSound(const std::string &prefix, const glm::vec3 &pos) const {
     const auto sound = static_cast<ma_sound*>(getSound(prefix));
 
     ma_sound_set_spatialization_enabled(sound, MA_TRUE);

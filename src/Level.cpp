@@ -70,7 +70,7 @@ void Level::removeChunk(const ivec2 &chunkPos) {
 }
 
 void Level::genChunk(const ivec2 &chunkPos) {
-    Chunk* chunk = getChunk(chunkPos);
+    Chunk *chunk = getChunk(chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
@@ -111,7 +111,7 @@ bool Level::isVoxelSolid(const Location &loc) {
     return chunk->isVoxelSolid(loc.pos);
 }
 
-[[nodiscard]] Voxel::Id Level::getVoxel(const Location& loc) {
+[[nodiscard]] Voxel::Id Level::getVoxel(const Location &loc) {
     const auto chunk = getChunk(loc.chunkPos);
     ASSERT_AND_RETURN(chunk != nullptr, Voxel::AIR)
     return chunk->getVoxel(loc.pos);
@@ -123,27 +123,27 @@ bool Level::isVoxelSolid(const Location &loc) {
     return getVoxel(loc);
 }
 
-void Level::setVoxel(const Location& loc, const Voxel::Id voxel) {
+void Level::setVoxel(const Location &loc, const Voxel::Id voxel) {
     const auto chunk = getChunk(loc.chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)
     chunk->setVoxel(loc.pos, voxel);
 }
 
-constexpr AABB getVoxelAABB(const ivec3& pos) {
+constexpr AABB getVoxelAABB(const ivec3 &pos) {
     return AABB(pos.x, pos.y, pos.z, pos.x + 1, pos.y + 1, pos.z + 1);
 }
 
-void addAABBs(const ivec3& pos, const AABB& box, std::vector<AABB>& boxes) {
+void addAABBs(const ivec3 &pos, const AABB &box, std::vector<AABB>& boxes) {
     const AABB aabb = getVoxelAABB(pos);
     if (box.intersects(aabb))
         boxes.push_back(aabb);
 }
 
-std::vector<AABB> Level::getCubes(const AABB& box) {
+std::vector<AABB> Level::getCubes(const AABB &box) {
     std::vector<AABB> boxes = {};
 
-    const ivec3& a = {floori(box.x0), floori(box.y0), floori(box.z0)};
-    const ivec3& b = {floori(box.x1 + 1), floori(box.y1 + 1), floori(box.z1 + 1)};
+    const ivec3 &a = {floori(box.x0), floori(box.y0), floori(box.z0)};
+    const ivec3 &b = {floori(box.x1 + 1), floori(box.y1 + 1), floori(box.z1 + 1)};
 
     for (int x = a.x; x < b.x; x++) {
         for (int z = a.z; z < b.z; z++) {
@@ -169,7 +169,7 @@ void Level::markChunkDirty(const ivec2 &chunkPos) {
     markChunkDirty(chunkPos, getChunk(chunkPos));
 }
 
-void Level::markChunkDirty(const ivec2 &chunkPos, Chunk* chunk) {
+void Level::markChunkDirty(const ivec2 &chunkPos, Chunk *chunk) {
     {
         std::lock_guard lock(game->getMesher().mtx);
 ;
