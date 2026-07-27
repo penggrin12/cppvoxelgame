@@ -27,6 +27,16 @@ enum class Axis : int {
     Z
 };
 
+// clangd REALLY wants these here
+template<typename T, glm::qualifier Q>
+struct std::hash<glm::vec<1, T, Q> >;
+template<typename T, glm::qualifier Q>
+struct std::hash<glm::vec<2, T, Q> >;
+template<typename T, glm::qualifier Q>
+struct std::hash<glm::vec<3, T, Q> >;
+template<typename T, glm::qualifier Q>
+struct std::hash<glm::vec<4, T, Q> >;
+
 template <Axis axis>
 [[nodiscard]] constexpr bool clipAxis(const glm::vec3 &start, const glm::vec3 &end, const float target, glm::vec3 &result) {
     constexpr int i = static_cast<int>(axis);
