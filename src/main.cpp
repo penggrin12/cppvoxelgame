@@ -37,7 +37,7 @@ void raylibLog(const int logLevel, const char *text, va_list args) {
     }
 }
 
-int main() {
+int main(int argc, char **argv) {
     spdlog::set_pattern("[%H:%M:%S:%e] [%s:%!:%#] [%l] %v");
 
 #ifdef DEBUG
@@ -48,6 +48,8 @@ int main() {
 
     SetTraceLogCallback(raylibLog);
 
+    if (argc >= 2 && strcmp(argv[1], "--vsync") == 0)
+        raylib::Window::SetConfigFlags(FLAG_VSYNC_HINT);
     raylib::Window window(1200, 800, "voxel game");
     // window.SetTargetFPS(60);
 
