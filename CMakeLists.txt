@@ -61,6 +61,15 @@ target_link_libraries(voxelgame PRIVATE
     TracyClient
 )
 
+if(MINGW)
+    target_link_options(voxelgame PRIVATE -static -static-libgcc -static-libstdc++)
+
+    # hide the console window
+#    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+#        set_target_properties(voxelgame PROPERTIES WIN32_EXECUTABLE TRUE)
+#    endif()
+endif()
+
 add_custom_target(copy_res ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/res
