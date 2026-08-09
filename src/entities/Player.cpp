@@ -13,15 +13,13 @@
 #include "../phys/raycast.hpp"
 #include "tracy/Tracy.hpp"
 
-constexpr int renderDist = 4;
-
 void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
     std::lock_guard lock(level->mutex);
 
     const Location myLoc = Location::fromGlobalPos(getPos());
 
-    for (int cx = myLoc.chunkPos.x - renderDist; cx < myLoc.chunkPos.x + renderDist; ++cx) {
-        for (int cy = myLoc.chunkPos.y - renderDist; cy < myLoc.chunkPos.y + renderDist; ++cy) {
+    for (int cx = myLoc.chunkPos.x - config.renderDist; cx < myLoc.chunkPos.x + config.renderDist; ++cx) {
+        for (int cy = myLoc.chunkPos.y - config.renderDist; cy < myLoc.chunkPos.y + config.renderDist; ++cy) {
             const auto chunkPos = ivec2{cx, cy};
             if (!level->hasChunk(chunkPos)) {
                 level->createChunk(chunkPos);
@@ -40,10 +38,10 @@ void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
 
     for (const auto &chunkPos: keysCopy) {
         const auto dist = distChebyshev(myLoc.chunkPos, chunkPos);
-        if ((dist < renderDist - 1) && (level->getChunk(chunkPos)->mesh == nullptr)) {
+        if ((dist < config.renderDist - 1) && (level->getChunk(chunkPos)->mesh == nullptr)) {
             level->markChunkDirty(chunkPos);
         }
-        if (dist <= renderDist + 1)
+        if (dist <= config.renderDist + 1)
             continue;
         game->getStorage().saveChunk(chunkPos, level->getChunk(chunkPos));
         level->removeChunk(chunkPos);

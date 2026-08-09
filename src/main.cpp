@@ -50,10 +50,11 @@ int main(int argc, char **argv) {
 
     SetTraceLogCallback(raylibLog);
 
-    cxxopts::Options options{"voxelgame", "One line description of MyProgram"};
+    cxxopts::Options options{"voxelgame", "A voxel game... as you already know."};
     options.add_options()
         ("h,help", "Display this help message")
         ("v,vsync", "Enable VSync")
+        ("d,dist", "Render distance", cxxopts::value<int>()->default_value("4"))
         ;
 
     cxxopts::ParseResult args;
@@ -65,12 +66,15 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    config.vsync = args.contains("vsync");
+    config.renderDist = args["dist"].as<int>();
+
     if (args.contains("help")) {
         printf("%s\n", options.help().c_str());
         return EXIT_SUCCESS;
     }
 
-    if (args.contains("vsync"))
+    if (config.vsync)
         raylib::Window::SetConfigFlags(FLAG_VSYNC_HINT);
     raylib::Window window(1200, 800, "voxel game");
     // window.SetTargetFPS(60);

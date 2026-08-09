@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "Config.hpp"
 #include "Input.hpp"
 #include "Level.hpp"
 #include "Mesher.hpp"
