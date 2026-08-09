@@ -130,7 +130,7 @@ void Level::setVoxel(const Location &loc, const Voxel::Id voxel) {
     chunk->setVoxel(loc.pos, voxel);
 }
 
-constexpr AABB Level::getVoxelAABB(const ivec3 &pos) {
+AABB Level::getVoxelAABB(const ivec3 &pos) {
     return AABB(pos.x, pos.y, pos.z, pos.x + 1, pos.y + 1, pos.z + 1);
 }
 

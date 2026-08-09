@@ -98,7 +98,7 @@ void Player::tryPlace(const RaycastHit &ray) const {
         return;
 
     // cant place voxels inside of yourself
-    if (level->getVoxelAABB(targetVoxelPos).intersects(bb))
+    if (Level::getVoxelAABB(targetVoxelPos).intersects(bb))
         return;
 
     level->setVoxel(targetVoxelPos, Voxel::STONE);

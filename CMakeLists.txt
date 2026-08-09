@@ -18,8 +18,6 @@ function(FETCH NAME REPO TAG)
     FetchContent_MakeAvailable(${NAME})
 endfunction()
 
-set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
-
 FETCH(miniaudio https://github.com/mackron/miniaudio.git master)
 FETCH(glm https://github.com/g-truc/glm.git master)
 FETCH(raylib https://github.com/raysan5/raylib.git master)
@@ -46,6 +44,7 @@ target_include_directories(voxelgame PRIVATE
 
 target_compile_definitions(voxelgame PRIVATE
     $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:TRACY_ENABLE>
     $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>
     $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
 )
