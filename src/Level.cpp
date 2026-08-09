@@ -129,12 +129,12 @@ void Level::setVoxel(const Location &loc, const Voxel::Id voxel) {
     chunk->setVoxel(loc.pos, voxel);
 }
 
-constexpr AABB getVoxelAABB(const ivec3 &pos) {
+constexpr AABB Level::getVoxelAABB(const ivec3 &pos) {
     return AABB(pos.x, pos.y, pos.z, pos.x + 1, pos.y + 1, pos.z + 1);
 }
 
 void addAABBs(const ivec3 &pos, const AABB &box, std::vector<AABB>& boxes) {
-    const AABB aabb = getVoxelAABB(pos);
+    const AABB aabb = Level::getVoxelAABB(pos);
     if (box.intersects(aabb))
         boxes.push_back(aabb);
 }

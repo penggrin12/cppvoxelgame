@@ -12,6 +12,7 @@ public:
     TestEntity() = delete;
     explicit TestEntity(Level* level) : Entity(level) {}
 
+    void init() override;
     void logic() override;
     void draw() override;
 };

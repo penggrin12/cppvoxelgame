@@ -49,10 +49,23 @@ void Player::iWantToSeeNearbyChunks() const {
     }
 }
 
+glm::vec3 Player::getDir() const {
+    glm::vec3 front;
+    front.x = std::cos(glm::radians(yaw)) * std::cos(glm::radians(pitch));
+    front.y = std::sin(glm::radians(pitch));
+    front.z = std::sin(glm::radians(yaw)) * std::cos(glm::radians(pitch));
+    return glm::normalize(front);
+}
+
 void Player::init() {
+    setSize(0.6f, 1.8f);
+    yaw = -90.0f;
+    pitch = 0.0f;
+
+    vec3 eyePos = getEyePos();
     camera = raylib::Camera3D(
-        glm2rl(getPos() + vec3(0, 2, 0)),
-        glm2rl(getPos() + vec3(0, 2, -1)),
+        glm2rl(eyePos),
+        glm2rl(eyePos + getDir()),
         raylib::Vector3{0, 1, 0},
         90.0f,
         CAMERA_PERSPECTIVE
@@ -67,14 +80,49 @@ void Player::draw2d() {
     const auto vec = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
     game->DrawTextB(std::format("{} {}", vec.x, vec.y), 8, 170, 12, raylib::Color::White());
     const auto aabb = getAabb();
-    game->DrawTextB(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {} {} {}\ndir: {} {} {}", onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z, getEyePos().x, getEyePos().y, getEyePos().z, getDir().x, getDir().y, getDir().z), 8, 195, 12, raylib::Color::White());
+
+    auto dir = getDir();
+    auto eye = getEyePos();
+    game->DrawTextB(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {:.2f} {:.2f} {:.2f}\ndir: {:.2f} {:.2f} {:.2f}",
+        onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z,
+        eye.x, eye.y, eye.z, dir.x, dir.y, dir.z),
+        8, 195, 12, raylib::Color::White());
+}
+
+void Player::tryPlace(const RaycastHit &ray) const {
+    const auto targetVoxelPos = ray.pos + ray.normal;
+    if (!Level::isVoxelInBounds(targetVoxelPos))
+        return;
+    if (level->getVoxel(targetVoxelPos) > Voxel::AIR)
+        return;
+
+    // cant place voxels inside of yourself
+    if (level->getVoxelAABB(targetVoxelPos).intersects(bb))
+        return;
+
+    level->setVoxel(targetVoxelPos, Voxel::STONE);
+    level->markVoxelDirtyAndNeighbours(targetVoxelPos);
+    game->getAudio().playSound("dirt.break", vec3(ray.pos) + vec3{0.5f, 0.5, 0.5f});
+}
+
+[[nodiscard]] bool Player::isChunkInFrustum(const ivec2 &chunkPos) const {
+    const auto pos = Location{ivec3{0}, chunkPos}.getGlobalPos();
+    const auto chunkAABB = AABB{
+        static_cast<float>(pos.x), 0, static_cast<float>(pos.z),
+        static_cast<float>(pos.x) + CHUNK_SIZE, LEVEL_HEIGHT, static_cast<float>(pos.z) + CHUNK_SIZE
+    };
+    return frustum.AABBoxIn(chunkAABB.getA(), chunkAABB.getB());
+}
+
+void Player::frustumCulling() {
+    frustum.Extract();
+
+    for (auto &chunkPair: level->getChunks()) {
+        chunkPair.second->hidden = !isChunkInFrustum(chunkPair.first);
+    }
 }
 
 void Player::logic() {
-    // setPos(rl2glm(camera.position));
-
-    // camera.position = glm2rl(getPos());
-
     if (game->debugStats.frame % 30 == 0)
         iWantToSeeNearbyChunks();
 
@@ -94,51 +142,45 @@ void Player::logic() {
         game->getAudio().playSound("dirt.break", vec3(ray.pos) + vec3{0.5f, 0.5, 0.5f});
     }
 
-    if (raylib::Mouse::IsButtonPressed(MOUSE_BUTTON_RIGHT)) {
-        const auto targetVoxelPos = ray.pos + ray.normal;
-        if (!level->isVoxelInBounds(targetVoxelPos))
-            return;
-        if (level->getVoxel(targetVoxelPos) > Voxel::AIR)
-            return;
-
-        level->setVoxel(targetVoxelPos, Voxel::STONE);
-        level->markVoxelDirtyAndNeighbours(targetVoxelPos);
-        game->getAudio().playSound("dirt.break", vec3(ray.pos) + vec3{0.5f, 0.5, 0.5f});
-    }
+    if (raylib::Mouse::IsButtonPressed(MOUSE_BUTTON_RIGHT))
+        tryPlace(ray);
 }
 
 void Player::movement() {
-    const auto move = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
     const auto look = GetMouseDelta();
+    const float sensitivity = 0.15f;
 
-    const raylib::Vector3 oldCamPos = camera.position;
+    yaw += look.x * sensitivity;
+    pitch -= look.y * sensitivity;
 
-    camera.Update(
-        glm2rl(vec3{-move.y, move.x, 0.0f} * (GameInput::keyDown(KEY_LEFT_SHIFT) ? 20.0f : 5.0f) * GetFrameTime()),
-        glm2rl(vec3{look.x, look.y, 0.0f}),
-        0.0f
-    );
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
 
-    vec3 delta = rl2glm(camera.position) - rl2glm(oldCamPos);
-    delta.y += -5.0f * GetFrameTime(); // gravity
+    glm::vec3 front = getDir();
 
-    if (raylib::Keyboard::IsKeyPressed(KEY_SPACE) && onGround)
-        delta.y = 1.1f;
+    glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
+    glm::vec3 flatFront = glm::normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), right));
 
+    const auto move = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
+    const float speed = GameInput::keyDown(KEY_LEFT_SHIFT) ? 9.0f : 4.5f;
+
+    glm::vec3 targetVel = (flatFront * -move.y) + (right * move.x);
+    if (glm::length(targetVel) > 0.0f) {
+        targetVel = glm::normalize(targetVel) * speed;
+    }
+
+    vel.x = targetVel.x;
+    vel.z = targetVel.z;
+
+    vel.y -= 25.0f * GetFrameTime();
+    if (onGround && raylib::Keyboard::IsKeyDown(KEY_SPACE)) {
+        vel.y = 8.5f;
+    }
+
+    vec3 delta = vel * GetFrameTime();
     this->move(delta);
 
     const vec3 eyePos = getEyePos();
-    const vec3 correction = eyePos - rl2glm(camera.position);
-
     camera.position = glm2rl(eyePos);
-
-    camera.target.x += correction.x;
-    camera.target.y += correction.y;
-    camera.target.z += correction.z;
+    camera.target = glm2rl(eyePos + front);
 }
-
-raylib::Camera3D& Player::getCamera() {
-    return this->camera;
-}
-
-

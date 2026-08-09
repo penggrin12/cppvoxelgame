@@ -4,40 +4,44 @@
 
 #include "Entity.hpp"
 
-void Entity::setPos(const vec3 &newPos) {
-    constexpr float bbWidth = 0.6f;
-    constexpr float bbHeight = 1.8f;
-    constexpr float heightOffset = 0.0f / 16.0f; // ???
+void Entity::setSize(float width, float height) {
+    bbWidth = width;
+    bbHeight = height;
+    setPos(pos);
+}
 
+void Entity::setPos(const vec3 &newPos) {
     pos = newPos;
-    constexpr float w = bbWidth / 2;
-    constexpr float h = bbHeight;
-    bb.set(pos.x - w, pos.y - heightOffset, pos.z - w, pos.x + w, pos.y - heightOffset + h, pos.z + w);
+    const float w = bbWidth / 2.0f;
+    const float h = bbHeight;
+    bb.set(pos.x - w, pos.y, pos.z - w, pos.x + w, pos.y + h, pos.z + w);
 }
 
 void Entity::move(vec3 delta) {
     std::vector<AABB> aabbs = level->getCubes(bb.expand(delta));
 
-    // y
-    auto hasTouchedFloor = false;
+    const vec3 originalDelta = delta;
+
     for (AABB& box : aabbs) {
-        const auto yClipped = box.clipYCollide(bb, delta.y);
-        if (delta.y < 0 && abs(yClipped) < 0.0001)
-            hasTouchedFloor = true;
-        delta.y = yClipped;
+        delta.y = box.clipYCollide(bb, delta.y);
     }
-    onGround = hasTouchedFloor;
     bb.move(0, delta.y, 0);
 
-    // x
-    for (AABB& box : aabbs)
+    for (AABB& box : aabbs) {
         delta.x = box.clipXCollide(bb, delta.x);
+    }
     bb.move(delta.x, 0, 0);
 
-    // z
-    for (AABB& box : aabbs)
+    for (AABB& box : aabbs) {
         delta.z = box.clipZCollide(bb, delta.z);
+    }
     bb.move(0, 0, delta.z);
+
+    onGround = (originalDelta.y < 0.0f && delta.y > originalDelta.y);
+
+    if (delta.x != originalDelta.x) vel.x = 0.0f;
+    if (delta.y != originalDelta.y) vel.y = 0.0f;
+    if (delta.z != originalDelta.z) vel.z = 0.0f;
 
     pos.x = (bb.x0 + bb.x1) * 0.5f;
     pos.y = bb.y0;

@@ -158,6 +158,14 @@ public:
         return (xs + ys + zs) / 3.0f;
     }
 
+    [[nodiscard]] constexpr Vector3 getA() const {
+        return {x0, y0, z0};
+    }
+
+    [[nodiscard]] constexpr Vector3 getB() const {
+        return {x1, y1, z1};
+    }
+
     [[nodiscard]] AABB shrink(float xa, float ya, float za) const {
         return {x0 + xa, y0 + ya, z0 + za, x1 - xa, y1 - ya, z1 - za};
     }

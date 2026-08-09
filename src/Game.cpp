@@ -44,7 +44,7 @@ Game::Game(raylib::Window& window) : window(window), res(this) {
     mesher.startThread(curLevel.get());
 
     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
-    player->setPos({8, 20, 8});
+    player->setPos({8, 64, 8});
     addEntity(player);
 
     DisableCursor();
@@ -62,7 +62,7 @@ void Game::logic() {
     for (const auto &entity: entities)
         entity->logic();
 
-    if (raylib::Keyboard::IsKeyPressed(KEY_E)) {
+    if (raylib::Keyboard::IsKeyDown(KEY_E)) {
         std::unique_ptr<Entity> ent = std::make_unique<TestEntity>(curLevel.get());
         ent->setPos(getPlayer().getPos());
         addEntity(ent);
@@ -80,6 +80,8 @@ void Game::draw() {
     auto camera = getPlayer().getCamera();
     camera.BeginMode();
 
+    getPlayer().frustumCulling();
+
     const auto eyePos = getPlayer().getEyePos();
 
     rlDisableBackfaceCulling();
@@ -89,6 +91,9 @@ void Game::draw() {
     rlEnableBackfaceCulling();
 
     for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
+        if (chunk->hidden)
+            continue;
+
         if (chunk->mesh == nullptr) {
             // SPDLOG_WARN("oh no nullptr mesh");
             continue;

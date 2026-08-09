@@ -59,6 +59,7 @@ private:
 public:
     std::unique_ptr<raylib::Mesh> mesh;
     bool meshDirty = true;
+    bool hidden = false;
 
     [[nodiscard]] Voxel::Id* getVoxels();
 
@@ -94,6 +95,7 @@ public:
     [[nodiscard]] Voxel::Id getVoxelOrAir(const Location &loc);
     void setVoxel(const Location &loc, Voxel::Id voxel);
 
+    static constexpr AABB getVoxelAABB(const ivec3 &pos);
     std::vector<AABB> getCubes(const AABB &box);
 
     void markChunkDirty(const ivec2 &chunkPos);
