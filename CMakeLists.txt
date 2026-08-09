@@ -24,6 +24,7 @@ FETCH(raylib_cpp https://github.com/RobLoach/raylib-cpp.git master)
 FETCH(spdlog https://github.com/gabime/spdlog.git v1.x)
 FETCH(zlib https://github.com/madler/zlib.git master)
 FETCH(gzip_hpp https://github.com/LimiNode/gzip-hpp.git main)
+FETCH(cxxopts https://github.com/jarro2783/cxxopts.git v3.3.1)
 
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
@@ -53,6 +54,7 @@ target_link_libraries(voxelgame PRIVATE
     spdlog::spdlog
     zlibstatic
     gzip_hpp
+    cxxopts
 )
 
 add_custom_target(copy_res ALL

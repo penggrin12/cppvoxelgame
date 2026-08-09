@@ -1,4 +1,5 @@
 ﻿#include <spdlog/spdlog.h>
+#include <cxxopts.hpp>
 
 #include "Game.hpp"
 #include "raylib-cpp.hpp"
@@ -48,7 +49,27 @@ int main(int argc, char **argv) {
 
     SetTraceLogCallback(raylibLog);
 
-    if (argc >= 2 && strcmp(argv[1], "--vsync") == 0)
+    cxxopts::Options options{"voxelgame", "One line description of MyProgram"};
+    options.add_options()
+        ("h,help", "Display this help message")
+        ("v,vsync", "Enable VSync")
+        ;
+
+    cxxopts::ParseResult args;
+
+    try {
+        args = options.parse(argc, argv);
+    } catch (cxxopts::exceptions::exception &e) {
+        SPDLOG_CRITICAL(e.what());
+        return EXIT_FAILURE;
+    }
+
+    if (args.contains("help")) {
+        printf("%s\n", options.help().c_str());
+        return EXIT_SUCCESS;
+    }
+
+    if (args.contains("vsync"))
         raylib::Window::SetConfigFlags(FLAG_VSYNC_HINT);
     raylib::Window window(1200, 800, "voxel game");
     // window.SetTargetFPS(60);
@@ -70,5 +91,5 @@ int main(int argc, char **argv) {
 
     // window closes in raylib::Window destructor
 
-    return 0;
+    return EXIT_SUCCESS;
 }
