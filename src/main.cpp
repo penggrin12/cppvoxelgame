@@ -1,5 +1,6 @@
 ﻿#include <spdlog/spdlog.h>
 #include <cxxopts.hpp>
+#include <tracy/Tracy.hpp>
 
 #include "Game.hpp"
 #include "raylib-cpp.hpp"
@@ -87,6 +88,7 @@ int main(int argc, char **argv) {
 
         game->debugStats.frame++;
         window.EndDrawing();
+        FrameMark;
     }
 
     // window closes in raylib::Window destructor

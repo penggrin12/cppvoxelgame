@@ -4,6 +4,8 @@
 
 #include "Mesher.hpp"
 
+#include "tracy/Tracy.hpp"
+
 constexpr int Mesher::ao(const int side1, const int side2, const int corner) {
     if (side1 + side2 == 2)
         return 0;
@@ -84,13 +86,14 @@ void Mesher::addVoxel(MeshTool &meshTool, Level *level, const Voxel::Id id, cons
     }
 }
 
-void Mesher::chunkerThread(Level *level) {
+void Mesher::chunkerThread(Level *level) { ZoneScoped;
     SPDLOG_INFO("chunkerThread started");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
-    while (!shouldStop) {
+    meshTool.reserve(CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE * 6 / 2);
+    while (!shouldStop) { ZoneScoped
         std::unique_lock chunkerLock(mtx);
         cv.wait(chunkerLock, [&] {
             return shouldStop || !level->dirtyChunksQueue.empty();
@@ -100,6 +103,7 @@ void Mesher::chunkerThread(Level *level) {
         SPDLOG_INFO("chunkerThread running");
 
         const auto [chunkPos, chunk] = level->dirtyChunksQueue.front();
+        ZoneNameF("%d %d", chunkPos.x, chunkPos.y);
         level->dirtyChunksQueue.pop();
         chunkerLock.unlock();
         SPDLOG_INFO("{} {}", chunkPos.x, chunkPos.y);
@@ -110,10 +114,13 @@ void Mesher::chunkerThread(Level *level) {
 
         meshTool.clear();
 
-        std::lock_guard lock(level->mutex);
-        for (int x = 0; x < CHUNK_SIZE; ++x) {
-            for (int y = 0; y < LEVEL_HEIGHT; ++y) {
-                for (int z = 0; z < CHUNK_SIZE; ++z) {
+        {
+            ZoneScopedN("level->mutex");
+            level->mutex.lock();
+        }
+        for (int y = 0; y < LEVEL_HEIGHT; ++y) {
+            for (int z = 0; z < CHUNK_SIZE; ++z) {
+                for (int x = 0; x < CHUNK_SIZE; ++x) {
                     const ivec3 pos = {x, y, z};
                     const Voxel::Id voxel = chunk->getVoxel(pos);
                     if (voxel == Voxel::AIR)
@@ -123,6 +130,7 @@ void Mesher::chunkerThread(Level *level) {
                 }
             }
         }
+        level->mutex.unlock();
 
         auto newMesh = std::make_unique<raylib::Mesh>();
         meshTool.exportToMesh(newMesh.get());

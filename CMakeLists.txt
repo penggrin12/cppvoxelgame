@@ -13,9 +13,12 @@ function(FETCH NAME REPO TAG)
         GIT_REPOSITORY ${REPO}
         GIT_TAG ${TAG}
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     FetchContent_MakeAvailable(${NAME})
 endfunction()
+
+set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
 
 FETCH(miniaudio https://github.com/mackron/miniaudio.git master)
 FETCH(glm https://github.com/g-truc/glm.git master)
@@ -25,6 +28,7 @@ FETCH(spdlog https://github.com/gabime/spdlog.git v1.x)
 FETCH(zlib https://github.com/madler/zlib.git master)
 FETCH(gzip_hpp https://github.com/LimiNode/gzip-hpp.git main)
 FETCH(cxxopts https://github.com/jarro2783/cxxopts.git v3.3.1)
+FETCH(tracy https://github.com/wolfpld/tracy.git master)
 
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
@@ -55,6 +59,7 @@ target_link_libraries(voxelgame PRIVATE
     zlibstatic
     gzip_hpp
     cxxopts
+    TracyClient
 )
 
 add_custom_target(copy_res ALL

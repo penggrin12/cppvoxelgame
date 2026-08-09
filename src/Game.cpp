@@ -10,11 +10,13 @@
 #include "Mesher.hpp"
 #include "entities/TestEntity.hpp"
 #include "phys/raycast.hpp"
+#include "tracy/Tracy.hpp"
 #include "utils/noise.hpp"
 
 raylib::Mesh mesh;
 
 GameResources::GameResources(Game* game) {
+    ZoneScoped;
     game->getAudio().cacheSounds("./res/sounds", "dirt.break");
 
     font = raylib::Font("res/PressStart2P.ttf");
@@ -59,8 +61,11 @@ Game::~Game() {
 }
 
 void Game::logic() {
-    for (const auto &entity: entities)
+    ZoneScoped;
+    for (const auto &entity: entities) {
+        ZoneScoped;
         entity->logic();
+    }
 
     if (raylib::Keyboard::IsKeyDown(KEY_E)) {
         std::unique_ptr<Entity> ent = std::make_unique<TestEntity>(curLevel.get());
@@ -77,6 +82,7 @@ void Game::logic() {
 }
 
 void Game::draw() {
+    ZoneScoped;
     auto camera = getPlayer().getCamera();
     camera.BeginMode();
 
@@ -90,16 +96,19 @@ void Game::draw() {
     rlEnableDepthMask();
     rlEnableBackfaceCulling();
 
-    for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
-        if (chunk->hidden)
-            continue;
+    {
+        ZoneScopedN("voxels");
+        for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
+            if (chunk->hidden)
+                continue;
 
-        if (chunk->mesh == nullptr) {
-            // SPDLOG_WARN("oh no nullptr mesh");
-            continue;
+            if (chunk->mesh == nullptr) {
+                // SPDLOG_WARN("oh no nullptr mesh");
+                continue;
+            }
+
+            chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
         }
-
-        chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
     }
 
     for (const auto &entity: entities)
@@ -126,6 +135,7 @@ void Game::draw() {
 }
 
 void Game::drawDebug() {
+    ZoneScoped;
     int posY = 22;
 
     auto drawText = [&posY, this](const std::string &text, const raylib::Color color = raylib::Color::White())

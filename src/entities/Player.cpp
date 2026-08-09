@@ -11,11 +11,15 @@
 #include "../Game.hpp"
 #include "../audio/audio.hpp"
 #include "../phys/raycast.hpp"
+#include "tracy/Tracy.hpp"
 
 constexpr int renderDist = 4;
 
-void Player::iWantToSeeNearbyChunks() const {
-    std::lock_guard lock(level->mutex);
+void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
+    {
+        ZoneScopedN("level->mutex");
+        level->mutex.lock();
+    }
 
     const Location myLoc = Location::fromGlobalPos(getPos());
 
@@ -47,6 +51,8 @@ void Player::iWantToSeeNearbyChunks() const {
         game->getStorage().saveChunk(chunkPos, level->getChunk(chunkPos));
         level->removeChunk(chunkPos);
     }
+
+    level->mutex.unlock();
 }
 
 glm::vec3 Player::getDir() const {
@@ -114,7 +120,7 @@ void Player::tryPlace(const RaycastHit &ray) const {
     return frustum.AABBoxIn(chunkAABB.getA(), chunkAABB.getB());
 }
 
-void Player::frustumCulling() {
+void Player::frustumCulling() { ZoneScoped;
     frustum.Extract();
 
     for (auto &chunkPair: level->getChunks()) {
@@ -122,7 +128,7 @@ void Player::frustumCulling() {
     }
 }
 
-void Player::logic() {
+void Player::logic() { ZoneScoped;
     if (game->debugStats.frame % 30 == 0)
         iWantToSeeNearbyChunks();
 
@@ -146,7 +152,7 @@ void Player::logic() {
         tryPlace(ray);
 }
 
-void Player::movement() {
+void Player::movement() { ZoneScoped;
     const auto look = GetMouseDelta();
     const float sensitivity = 0.15f;
 

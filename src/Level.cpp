@@ -11,6 +11,7 @@
 #include "Game.hpp"
 #include "Mesher.hpp"
 #include "voxeldata.hpp"
+#include "tracy/Tracy.hpp"
 #include "utils/noise.hpp"
 
 /// Chunk
@@ -54,22 +55,22 @@ void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
 
 /// Level
 
-bool Level::hasChunk(const ivec2 &chunkPos) const {
+bool Level::hasChunk(const ivec2 &chunkPos) const { ZoneScoped;
     return chunks.contains(chunkPos);
 }
 
-void Level::createChunk(const ivec2 &chunkPos) {
+void Level::createChunk(const ivec2 &chunkPos) { ZoneScoped;
     ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos));
     chunks[chunkPos] = std::make_unique<Chunk>();
     // dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));
 }
 
-void Level::removeChunk(const ivec2 &chunkPos) {
+void Level::removeChunk(const ivec2 &chunkPos) { ZoneScoped;
     chunks[chunkPos].reset();
     chunks.erase(chunkPos);
 }
 
-void Level::genChunk(const ivec2 &chunkPos) {
+void Level::genChunk(const ivec2 &chunkPos) { ZoneScoped;
     Chunk *chunk = getChunk(chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)
 
@@ -88,7 +89,7 @@ void Level::genChunk(const ivec2 &chunkPos) {
     }
 }
 
-Chunk* Level::getChunk(const ivec2 chunkPos) {
+Chunk* Level::getChunk(const ivec2 chunkPos) { ZoneScoped;
     if (!hasChunk(chunkPos))
         return nullptr;
     return chunks[chunkPos].get();
@@ -139,7 +140,7 @@ void addAABBs(const ivec3 &pos, const AABB &box, std::vector<AABB>& boxes) {
         boxes.push_back(aabb);
 }
 
-std::vector<AABB> Level::getCubes(const AABB &box) {
+std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
     std::vector<AABB> boxes = {};
 
     const ivec3 &a = {floori(box.x0), floori(box.y0), floori(box.z0)};
@@ -169,7 +170,7 @@ void Level::markChunkDirty(const ivec2 &chunkPos) {
     markChunkDirty(chunkPos, getChunk(chunkPos));
 }
 
-void Level::markChunkDirty(const ivec2 &chunkPos, Chunk *chunk) {
+void Level::markChunkDirty(const ivec2 &chunkPos, Chunk *chunk) { ZoneScoped;
     {
         std::lock_guard lock(game->getMesher().mtx);
         for (const auto &otherChunkPos: get_container(dirtyChunksQueue) | std::views::keys) {
@@ -186,7 +187,7 @@ void Level::markVoxelDirty(const Location &loc) {
     markChunkDirty(loc.chunkPos);
 }
 
-void Level::markVoxelDirtyAndNeighbours(const Location &loc) {
+void Level::markVoxelDirtyAndNeighbours(const Location &loc) { ZoneScoped;
     std::queue<ivec2> q;
     q.push(loc.chunkPos);
 

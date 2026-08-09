@@ -4,6 +4,8 @@
 
 #include "Entity.hpp"
 
+#include "tracy/Tracy.hpp"
+
 void Entity::setSize(float width, float height) {
     bbWidth = width;
     bbHeight = height;
@@ -17,7 +19,7 @@ void Entity::setPos(const vec3 &newPos) {
     bb.set(pos.x - w, pos.y, pos.z - w, pos.x + w, pos.y + h, pos.z + w);
 }
 
-void Entity::move(vec3 delta) {
+void Entity::move(vec3 delta) { ZoneScoped;
     std::vector<AABB> aabbs = level->getCubes(bb.expand(delta));
 
     const vec3 originalDelta = delta;
