@@ -41,7 +41,8 @@ constexpr float AO_VALUES[4] = {0.4f, 0.6f, 0.8f, 1.0f};
 
 class Mesher {
 private:
-    bool shouldStop = false;
+    std::atomic<bool> shouldStop{false};
+    std::thread thread;
 
     constexpr static int ao(int side1, int side2, int corner);
     static glm::vec4 getAo(const Side &side, Level *level, const Location &loc);

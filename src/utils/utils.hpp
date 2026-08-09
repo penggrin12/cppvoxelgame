@@ -78,4 +78,15 @@ inline CONSTEXPR_IF_SUPPORTED glm::vec3 rl2glm(const raylib::Vector3& v) { retur
 
 #undef CONSTEXPR_IF_SUPPORTED
 
+template <class ADAPTER>
+typename ADAPTER::container_type & get_container (ADAPTER &a)
+{
+    struct hack : ADAPTER {
+        static typename ADAPTER::container_type & get (ADAPTER &a) {
+            return a.*&hack::c;
+        }
+    };
+    return hack::get(a);
+}
+
 #endif //VOXELGAME_UTILS_HPP

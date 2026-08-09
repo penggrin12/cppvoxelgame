@@ -140,9 +140,11 @@ void Mesher::chunkerThread(Level *level) {
 }
 
 void Mesher::startThread(Level *level) {
-    std::thread(&Mesher::chunkerThread, this, level).detach();
+    thread = std::thread(&Mesher::chunkerThread, this, level);
 }
 
 void Mesher::stopThread() {
     shouldStop = true;
+    cv.notify_all();
+    thread.join();
 }
