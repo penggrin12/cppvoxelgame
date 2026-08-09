@@ -172,7 +172,6 @@ void Level::markChunkDirty(const ivec2 &chunkPos) {
 void Level::markChunkDirty(const ivec2 &chunkPos, Chunk *chunk) {
     {
         std::lock_guard lock(game->getMesher().mtx);
-;
         for (const auto &otherChunkPos: get_container(dirtyChunksQueue) | std::views::keys) {
             if (otherChunkPos == chunkPos)
                 return;
