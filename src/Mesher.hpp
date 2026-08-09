@@ -39,19 +39,21 @@ constexpr Side CUBE_SIDES[6] = {SIDE_TOP, SIDE_BOTTOM, SIDE_LEFT, SIDE_RIGHT, SI
 
 constexpr float AO_VALUES[4] = {0.4f, 0.6f, 0.8f, 1.0f};
 
+class MesherCache;
+
 class Mesher {
 private:
     std::atomic<bool> shouldStop{false};
     std::thread thread;
 
     constexpr static int ao(int side1, int side2, int corner);
-    static glm::vec4 getAo(const Side &side, Level *level, const Location &loc);
+    static glm::vec4 getAo(const Side &side, const MesherCache &cache, const Location &loc);
 public:
     std::mutex mtx;
     std::condition_variable cv;
 
-    static void addFace(MeshTool &meshTool, Level *level, const Side &side, const glm::ivec2 &atlasOffset, const Location &loc);
-    static void addVoxel(MeshTool &meshTool, Level *level, Voxel::Id id, const Location &loc);
+    static void addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const glm::ivec2 &atlasOffset, const Location &loc);
+    static void addVoxel(MeshTool &meshTool, const MesherCache &cache, Voxel::Id id, const Location &loc);
 
     void chunkerThread(Level* level);
     void startThread(Level* level);

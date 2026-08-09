@@ -166,22 +166,19 @@ std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
     return boxes;
 }
 
-void Level::markChunkDirty(const ivec2 &chunkPos) {
-    markChunkDirty(chunkPos, getChunk(chunkPos));
-}
-
-void Level::markChunkDirty(const ivec2 &chunkPos, Chunk *chunk) { ZoneScoped;
+void Level::markChunkDirty(const ivec2 &chunkPos) { ZoneScoped;
     {
         std::lock_guard lock(game->getMesher().mtx);
-        for (const auto &otherChunkPos: get_container(dirtyChunksQueue) | std::views::keys) {
+        for (const auto &otherChunkPos : dirtyChunksQueue) {
             if (otherChunkPos == chunkPos)
                 return;
         }
 
-        dirtyChunksQueue.emplace(chunkPos, chunk);
+        dirtyChunksQueue.push_back(chunkPos);
     }
     game->getMesher().cv.notify_one();
 }
+
 
 void Level::markVoxelDirty(const Location &loc) {
     markChunkDirty(loc.chunkPos);

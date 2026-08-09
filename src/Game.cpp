@@ -73,11 +73,21 @@ void Game::logic() {
         addEntity(ent);
     }
 
-    while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
-        auto& [chunk, newMesh] = curLevel->chunksReadyToSwapMeshQueue.front();
+    std::vector<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> toSwap;
+    {
+        std::lock_guard lock(curLevel->mutex);
+        while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
+            toSwap.push_back(std::move(curLevel->chunksReadyToSwapMeshQueue.front()));
+            curLevel->chunksReadyToSwapMeshQueue.pop();
+        }
+    }
+
+    // We upload and apply to map chunks unblocked
+    for (auto& [chunkPos, newMesh] : toSwap) {
         newMesh->Upload();
-        chunk->mesh = std::move(newMesh);
-        curLevel->chunksReadyToSwapMeshQueue.pop();
+        if (curLevel->hasChunk(chunkPos)) {
+            curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
+        }
     }
 }
 

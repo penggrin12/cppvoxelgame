@@ -6,52 +6,79 @@
 
 #include "tracy/Tracy.hpp"
 
+
+class MesherCache {
+public:
+    Voxel::Id voxels[3][3][CHUNK_VOXELS_TOTAL];
+    bool exists[3][3];
+    ivec2 center;
+
+    void update(Level* level, ivec2 centerPos) {
+        center = centerPos;
+        std::lock_guard lock(level->mutex);
+        for(int x = -1; x <= 1; ++x) {
+            for(int z = -1; z <= 1; ++z) {
+                Chunk* c = level->getChunk(centerPos + ivec2(x, z));
+                if(c) {
+                    exists[x+1][z+1] = true;
+                    std::memcpy(voxels[x+1][z+1], c->getVoxels(), CHUNK_VOXELS_TOTAL * sizeof(Voxel::Id));
+                } else {
+                    exists[x+1][z+1] = false;
+                }
+            }
+        }
+    }
+
+    Voxel::Id getVoxelOrAir(const Location& loc) const {
+        if (loc.pos.y < 0 || loc.pos.y >= LEVEL_HEIGHT) return Voxel::AIR;
+        ivec2 offset = loc.chunkPos - center;
+        if (offset.x >= -1 && offset.x <= 1 && offset.y >= -1 && offset.y <= 1) {
+            if (exists[offset.x+1][offset.y+1]) {
+                size_t index = loc.pos.x + loc.pos.z * CHUNK_SIZE + loc.pos.y * CHUNK_SIZE * CHUNK_SIZE;
+                return voxels[offset.x+1][offset.y+1][index];
+            }
+        }
+        return Voxel::AIR;
+    }
+
+    bool isVoxelSolid(const Location& loc) const {
+        return getVoxelOrAir(loc) > Voxel::AIR;
+    }
+};
+
 constexpr int Mesher::ao(const int side1, const int side2, const int corner) {
     if (side1 + side2 == 2)
         return 0;
     return 3 - (side1 + side2 + corner);
 }
 
-glm::vec4 Mesher::getAo(const Side &side, Level *level, const Location &loc) {
+glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const Location &loc) {
     glm::vec4 aos;
     const int vertices[4] = {side.v0, side.v1, side.v2, side.v3};
 
     for (int i = 0; i < 4; ++i) {
         glm::ivec3 vertex = CUBE_VERTICES[vertices[i]];
-
         glm::ivec3 D = vertex * 2 - glm::ivec3(1, 1, 1);
         glm::ivec3 T = D - side.normal;
-
-        glm::ivec3 side1Offset = T;
-        glm::ivec3 side2Offset = T;
+        glm::ivec3 side1Offset = T, side2Offset = T;
 
         if (T.x != 0) {
-            if (T.y != 0) {
-                side1Offset.y = 0; side2Offset.x = 0;
-            } else {
-                side1Offset.z = 0; side2Offset.x = 0;
-            }
+            if (T.y != 0) { side1Offset.y = 0; side2Offset.x = 0; } else { side1Offset.z = 0; side2Offset.x = 0; }
         } else {
             side1Offset.z = 0; side2Offset.y = 0;
         }
 
-        Voxel::Id side1 = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + side1Offset);
-        Voxel::Id side2 = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + side2Offset);
-        Voxel::Id corner = level->getVoxelOrAir(loc.getGlobalPos() + side.normal + T);
+        Voxel::Id side1 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side1Offset);
+        Voxel::Id side2 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side2Offset);
+        Voxel::Id corner = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + T);
 
-        int aoVal = ao(
-            Voxel::isSolid(side1) ? 1 : 0,
-            Voxel::isSolid(side2) ? 1 : 0,
-            Voxel::isSolid(corner) ? 1 : 0
-        );
-
+        int aoVal = ao(Voxel::isSolid(side1) ? 1 : 0, Voxel::isSolid(side2) ? 1 : 0, Voxel::isSolid(corner) ? 1 : 0);
         aos[i] = AO_VALUES[aoVal];
     }
-
     return aos;
 }
 
-void Mesher::addFace(MeshTool &meshTool, Level *level, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
+void Mesher::addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
     const ivec3 a = CUBE_VERTICES[side.v0] + loc.pos;
     const ivec3 b = CUBE_VERTICES[side.v1] + loc.pos;
     const ivec3 c = CUBE_VERTICES[side.v2] + loc.pos;
@@ -67,83 +94,71 @@ void Mesher::addFace(MeshTool &meshTool, Level *level, const Side &side, const i
     const vec2 uvC = {uvOffset.x + uvSize - inset,   uvOffset.y + inset};
     const vec2 uvD = {uvOffset.x + inset,            uvOffset.y + inset};
 
-    const glm::vec4 ao = getAo(side, level, loc);
-    // glm::vec4 ao = glm::vec4(1);
-
+    const glm::vec4 ao = getAo(side, cache, loc);
     meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal), ao);
 }
 
-void Mesher::addVoxel(MeshTool &meshTool, Level *level, const Voxel::Id id, const Location &loc) {
+void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel::Id id, const Location &loc) {
     for (int i = 0; i < sizeof(CUBE_SIDES) / sizeof(Side); ++i) {
         const auto sideNormal = CUBE_SIDES[i].normal;
-        // const auto sideLoc = Location::fromGlobalPos(ivec3{pos.x + chunkPos.x * CHUNK_SIZE + sideNormal.x, pos.y + sideNormal.y, pos.z + chunkPos.y * CHUNK_SIZE + sideNormal.z});
         const auto sideLoc = Location::fromGlobalPos(loc.getGlobalPos() + sideNormal);
-        assert(level->hasChunk(sideLoc.chunkPos));
-        if (level->isVoxelSolid(sideLoc))
-            continue;
 
-        addFace(meshTool, level, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], loc);
+        if (cache.isVoxelSolid(sideLoc)) continue;
+
+        addFace(meshTool, cache, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], loc);
     }
 }
 
 void Mesher::chunkerThread(Level *level) { ZoneScoped;
     SPDLOG_INFO("chunkerThread started");
-
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
     meshTool.reserve(CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE * 6 / 2);
+
+    auto cache = std::make_unique<MesherCache>();
+
     while (!shouldStop) { ZoneScoped
         std::unique_lock chunkerLock(mtx);
-        cv.wait(chunkerLock, [&] {
-            return shouldStop || !level->dirtyChunksQueue.empty();
-        });
+        cv.wait(chunkerLock, [&] { return shouldStop || !level->dirtyChunksQueue.empty(); });
         if (shouldStop) break;
 
-        SPDLOG_INFO("chunkerThread running");
-
-        const auto [chunkPos, chunk] = level->dirtyChunksQueue.front();
+        const auto chunkPos = level->dirtyChunksQueue.front();
         ZoneNameF("%d %d", chunkPos.x, chunkPos.y);
-        level->dirtyChunksQueue.pop();
+        level->dirtyChunksQueue.pop_front();
         chunkerLock.unlock();
-        SPDLOG_INFO("{} {}", chunkPos.x, chunkPos.y);
-
-#ifdef DEBUG
-        auto t0 = std::chrono::high_resolution_clock::now();
-#endif
 
         meshTool.clear();
 
         {
-            ZoneScopedN("level->mutex");
-            level->mutex.lock();
+            ZoneScopedN("cache->update");
+            cache->update(level, chunkPos); // This briefly locks mutex, memcpy runs, then it unlocks
         }
+
+        if (!cache->exists[1][1]) continue; // Was this chunk safely unloaded before meshing?
+
         for (int y = 0; y < LEVEL_HEIGHT; ++y) {
             for (int z = 0; z < CHUNK_SIZE; ++z) {
                 for (int x = 0; x < CHUNK_SIZE; ++x) {
                     const ivec3 pos = {x, y, z};
-                    const Voxel::Id voxel = chunk->getVoxel(pos);
-                    if (voxel == Voxel::AIR)
-                        continue;
+                    const Voxel::Id voxel = cache->voxels[1][1][x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
 
-                    addVoxel(meshTool, level, voxel, Location(pos, chunkPos));
+                    if (voxel == Voxel::AIR) continue;
+                    addVoxel(meshTool, *cache, voxel, Location(pos, chunkPos));
                 }
             }
         }
-        level->mutex.unlock();
 
         auto newMesh = std::make_unique<raylib::Mesh>();
         meshTool.exportToMesh(newMesh.get());
 
-        level->chunksReadyToSwapMeshQueue.emplace(chunk, std::move(newMesh));
-
-#ifdef DEBUG
-        auto t1 = std::chrono::high_resolution_clock::now();
-        SPDLOG_DEBUG("{} ms", (t1-t0).count() / static_cast<double>(1'000'000));
-#endif
-
-        chunk->meshDirty = false;
-        SPDLOG_DEBUG("dirty chunk cleaned");
+        {
+            std::lock_guard lock(level->mutex);
+            if (level->hasChunk(chunkPos)) {
+                level->chunksReadyToSwapMeshQueue.emplace(chunkPos, std::move(newMesh));
+                level->getChunk(chunkPos)->meshDirty = false;
+            }
+        }
     }
 }
 

@@ -75,8 +75,8 @@ private:
 public:
     std::mutex mutex;
 
-    std::queue<std::pair<ivec2, Chunk*>> dirtyChunksQueue;
-    std::queue<std::pair<Chunk*, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
+    std::deque<ivec2> dirtyChunksQueue;
+    std::queue<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
 
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 
@@ -99,7 +99,6 @@ public:
     std::vector<AABB> getCubes(const AABB &box);
 
     void markChunkDirty(const ivec2 &chunkPos);
-    void markChunkDirty(const ivec2 &chunkPos, Chunk *chunk);
     void markVoxelDirty(const Location &loc);
     void markVoxelDirtyAndNeighbours(const Location &loc);
 };

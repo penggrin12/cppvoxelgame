@@ -16,10 +16,7 @@
 constexpr int renderDist = 4;
 
 void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
-    {
-        ZoneScopedN("level->mutex");
-        level->mutex.lock();
-    }
+    std::lock_guard lock(level->mutex);
 
     const Location myLoc = Location::fromGlobalPos(getPos());
 
@@ -51,8 +48,6 @@ void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
         game->getStorage().saveChunk(chunkPos, level->getChunk(chunkPos));
         level->removeChunk(chunkPos);
     }
-
-    level->mutex.unlock();
 }
 
 glm::vec3 Player::getDir() const {
