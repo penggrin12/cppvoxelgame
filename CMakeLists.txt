@@ -34,6 +34,7 @@ FETCH(zlib https://github.com/madler/zlib.git master)
 FETCH(gzip_hpp https://github.com/LimiNode/gzip-hpp.git main)
 FETCH(cxxopts https://github.com/jarro2783/cxxopts.git v3.3.1)
 FETCH(tracy https://github.com/wolfpld/tracy.git master)
+FETCH(lua https://github.com/walterschell/Lua.git master)
 
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
@@ -65,6 +66,7 @@ target_link_libraries(voxelgame PRIVATE
     gzip_hpp
     cxxopts
     TracyClient
+    lua
 )
 
 if(MINGW)

@@ -41,15 +41,20 @@ void debugRay(RaycastHit& ray) {
 }
 
 Game::Game(raylib::Window& window) : window(window), res(this) {
+    lua.open("res/scripts/game.lua");
+
     curLevel = std::make_unique<Level>();
 
     mesher.startThread(curLevel.get());
 
     std::unique_ptr<Entity> player = std::make_unique<Player>(curLevel.get());
+    player->luaRef = lua.getRef("Player");
     player->setPos({8, 64, 8});
     addEntity(player);
 
     DisableCursor();
+
+    lua.call("init");
 }
 
 Game::~Game() {
@@ -65,6 +70,7 @@ void Game::logic() {
     for (const auto &entity: entities) {
         ZoneScoped;
         entity->logic();
+        lua.callFor(entity->luaRef, "logic", GetFrameTime());
     }
 
     if (raylib::Keyboard::IsKeyDown(KEY_E)) {
@@ -89,6 +95,8 @@ void Game::logic() {
             curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
         }
     }
+
+    lua.call("logic", GetFrameTime());
 }
 
 void Game::draw() {
@@ -121,8 +129,12 @@ void Game::draw() {
         }
     }
 
-    for (const auto &entity: entities)
+    for (const auto &entity: entities) {
         entity->draw();
+        lua.callFor(entity->luaRef, "draw");
+    }
+
+    lua.call("draw");
 
     DrawLine3D({camera.position.x, camera.position.y - 1.0f, camera.position.z}, camera.target, raylib::Color::Red());
 

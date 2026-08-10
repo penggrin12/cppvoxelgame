@@ -10,6 +10,7 @@
 #include "Config.hpp"
 #include "Input.hpp"
 #include "Level.hpp"
+#include "Lua.hpp"
 #include "Mesher.hpp"
 #include "audio/audio.hpp"
 #include "entities/Entity.hpp"
@@ -42,6 +43,7 @@ private:
     GameAudio audio;
     GameInput input;
     Mesher mesher;
+    Lua lua;
     raylib::Window& window;
 
     std::unique_ptr<Level> curLevel;

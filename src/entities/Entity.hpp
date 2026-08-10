@@ -11,7 +11,10 @@
 
 
 class Entity {
+friend class Game;
 protected:
+    int luaRef = -1;
+
     vec3 pos = {0, 0, 0};
     vec3 vel = {0, 0, 0};
     AABB bb = {0, 0, 0, 0, 0, 0};
