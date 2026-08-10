@@ -18,6 +18,13 @@ function(FETCH NAME REPO TAG)
     FetchContent_MakeAvailable(${NAME})
 endfunction()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(TRACY_ENABLE ON CACHE BOOL "Enable Tracy profiling" FORCE)
+    set(TRACY_CALLSTACK 8 CACHE BOOL "" FORCE)
+else()
+    set(TRACY_ENABLE OFF CACHE BOOL "Disable Tracy profiling" FORCE)
+endif()
+
 FETCH(miniaudio https://github.com/mackron/miniaudio.git master)
 FETCH(glm https://github.com/g-truc/glm.git master)
 FETCH(raylib https://github.com/raysan5/raylib.git master)
@@ -44,7 +51,6 @@ target_include_directories(voxelgame PRIVATE
 
 target_compile_definitions(voxelgame PRIVATE
     $<$<CONFIG:Debug>:DEBUG>
-    $<$<CONFIG:Debug>:TRACY_ENABLE>
     $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>
     $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
 )
