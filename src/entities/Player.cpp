@@ -16,19 +16,17 @@
 void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
     std::lock_guard lock(level->mutex);
 
-    const Location myLoc = Location::fromGlobalPos(getPos());
+    const Location myLoc = Location::fromRealGlobalPos(getPos());
+    const auto paddedRenderDist = config.renderDist + 1;
 
-    for (int cx = myLoc.chunkPos.x - config.renderDist; cx < myLoc.chunkPos.x + config.renderDist; ++cx) {
-        for (int cy = myLoc.chunkPos.y - config.renderDist; cy < myLoc.chunkPos.y + config.renderDist; ++cy) {
+    for (int cx = myLoc.chunkPos.x - paddedRenderDist; cx <= myLoc.chunkPos.x + paddedRenderDist; ++cx) {
+        for (int cy = myLoc.chunkPos.y - paddedRenderDist; cy <= myLoc.chunkPos.y + paddedRenderDist; ++cy) {
             const auto chunkPos = ivec2{cx, cy};
-            if (!level->hasChunk(chunkPos)) {
-                level->createChunk(chunkPos);
+            if (level->hasChunk(chunkPos))
+                continue;
 
-                if (game->getStorage().hasChunk(chunkPos))
-                    game->getStorage().loadChunk(chunkPos, level->getChunk(chunkPos));
-                else
-                    level->genChunk(chunkPos);
-            }
+            level->createChunk(chunkPos);
+            level->genChunk(chunkPos);
         }
     }
 
@@ -38,12 +36,19 @@ void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
 
     for (const auto &chunkPos: keysCopy) {
         const auto dist = distChebyshev(myLoc.chunkPos, chunkPos);
-        if ((dist < config.renderDist - 1) && (level->getChunk(chunkPos)->mesh == nullptr)) {
-            level->markChunkDirty(chunkPos);
-        }
-        if (dist <= config.renderDist + 1)
+        if (dist <= config.renderDist) {
+            if (level->getChunk(chunkPos)->mesh == nullptr)
+                level->markChunkDirty(chunkPos);
             continue;
-        game->getStorage().saveChunk(chunkPos, level->getChunk(chunkPos));
+        }
+
+        // keep a strip of unmeshed chunks to correctly mesh closer ones
+        if (dist == config.renderDist + 1) {
+            level->getChunk(chunkPos)->mesh = nullptr;
+            continue;
+        }
+
+        SPDLOG_INFO("removing {},{}. dist is {}", chunkPos.x, chunkPos.y, dist);
         level->removeChunk(chunkPos);
     }
 }
@@ -105,11 +110,7 @@ void Player::tryPlace(const RaycastHit &ray) const {
 }
 
 [[nodiscard]] bool Player::isChunkInFrustum(const ivec2 &chunkPos) const {
-    const auto pos = Location{ivec3{0}, chunkPos}.getGlobalPos();
-    const auto chunkAABB = AABB{
-        static_cast<float>(pos.x), 0, static_cast<float>(pos.z),
-        static_cast<float>(pos.x) + CHUNK_SIZE, LEVEL_HEIGHT, static_cast<float>(pos.z) + CHUNK_SIZE
-    };
+    const auto chunkAABB = Chunk::getAabb(chunkPos);
     return frustum.AABBoxIn(chunkAABB.getA(), chunkAABB.getB());
 }
 

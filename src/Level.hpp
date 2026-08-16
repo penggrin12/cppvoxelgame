@@ -24,10 +24,10 @@ struct Location {
     ivec3 pos{}; // position within a chunk, 0..CHUNK_SIZE exclusive
     ivec2 chunkPos{}; // Y is Z. the level is a single chunk tall, minecraft style
 
-    Location(const ivec3 &pos, const ivec2 &chunkPos) : pos(pos), chunkPos(chunkPos) {}
+    constexpr Location(const ivec3 pos, const ivec2 chunkPos) : pos(pos), chunkPos(chunkPos) {}
 
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    Location(const ivec3 &globalPos) { // NOLINT(*-explicit-constructor)
+    constexpr Location(const ivec3 globalPos) { // NOLINT(*-explicit-constructor)
         chunkPos = ivec2{
             floorDiv(globalPos.x, CHUNK_SIZE),
             floorDiv(globalPos.z, CHUNK_SIZE)
@@ -39,16 +39,16 @@ struct Location {
         };
     }
 
-    [[nodiscard]] ivec3 getGlobalPos() const {
+    [[nodiscard]] constexpr ivec3 getGlobalPos() const {
         const auto offset = chunkPos * CHUNK_SIZE;
-        return ivec3{pos.x + offset.x, pos.y, pos.z + offset.y};
+        return {pos.x + offset.x, pos.y, pos.z + offset.y};
     }
 
-    [[nodiscard]] static Location fromGlobalPos(const ivec3 &globalPos) {
+    [[nodiscard]] constexpr static Location fromGlobalPos(const ivec3 &globalPos) {
         return {globalPos};
     }
 
-    [[nodiscard]] static Location fromRealGlobalPos(const vec3 &globalPos) {
+    [[nodiscard]] constexpr static Location fromRealGlobalPos(const vec3 &globalPos) {
         return fromGlobalPos(glm::floor(globalPos));
     }
 };
@@ -63,10 +63,14 @@ public:
 
     [[nodiscard]] Voxel::Id* getVoxels();
 
-    [[nodiscard]] static bool isVoxelInBounds(const ivec3 &pos);
-    [[nodiscard]] bool isVoxelSolid(const ivec3 &pos) const;
-    [[nodiscard]] Voxel::Id getVoxel(const ivec3 &pos) const;
-    void setVoxel(const ivec3 &pos, Voxel::Id voxel);
+    [[nodiscard]] static bool isVoxelInBounds(ivec3 pos);
+    [[nodiscard]] bool isVoxelSolid(ivec3 pos) const;
+    [[nodiscard]] Voxel::Id getVoxel(ivec3 pos) const;
+    void setVoxel(ivec3 pos, Voxel::Id voxel);
+
+    // this probably shouldn't be static
+    // but for that Chunk needs to know it's position...
+    [[nodiscard]] static AABB getAabb(ivec2 chunkPos);
 };
 
 class Level {
@@ -80,27 +84,27 @@ public:
 
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 
-    [[nodiscard]] bool hasChunk(const ivec2 &chunkPos) const;
-    void createChunk(const ivec2 &chunkPos);
-    void removeChunk(const ivec2 &chunkPos);
-    void genChunk(const ivec2 &chunkPos);
+    [[nodiscard]] bool hasChunk(ivec2 chunkPos) const;
+    void createChunk(ivec2 chunkPos);
+    void removeChunk(ivec2 chunkPos);
+    void genChunk(ivec2 chunkPos);
 
     // nullptr if it doesn't exist
     Chunk* getChunk(ivec2 chunkPos);
 
-    [[nodiscard]] static bool isVoxelInBounds(const Location &loc);
-    [[nodiscard]] bool isVoxelSolid(const Location &loc);
+    [[nodiscard]] static bool isVoxelInBounds(Location loc);
+    [[nodiscard]] bool isVoxelSolid(Location loc);
 
-    [[nodiscard]] Voxel::Id getVoxel(const Location &loc);
-    [[nodiscard]] Voxel::Id getVoxelOrAir(const Location &loc);
-    void setVoxel(const Location &loc, Voxel::Id voxel);
+    [[nodiscard]] Voxel::Id getVoxel(Location loc);
+    [[nodiscard]] Voxel::Id getVoxelOrAir(Location loc);
+    void setVoxel(Location loc, Voxel::Id voxel);
 
-    static AABB getVoxelAABB(const ivec3 &pos);
+    static AABB getVoxelAABB(ivec3 pos);
     std::vector<AABB> getCubes(const AABB &box);
 
-    void markChunkDirty(const ivec2 &chunkPos);
-    void markVoxelDirty(const Location &loc);
-    void markVoxelDirtyAndNeighbours(const Location &loc);
+    void markChunkDirty(ivec2 chunkPos);
+    void markVoxelDirty(Location loc);
+    void markVoxelDirtyAndNeighbours(Location loc);
 };
 
 

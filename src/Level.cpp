@@ -31,46 +31,53 @@ Voxel::Id* Chunk::getVoxels() {
     return voxels;
 }
 
-bool Chunk::isVoxelInBounds(const ivec3 &pos) {
+bool Chunk::isVoxelInBounds(const ivec3 pos) {
     if (pos.x < 0 || pos.x >= CHUNK_SIZE) return false;
     if (pos.y < 0 || pos.y >= LEVEL_HEIGHT) return false;
     if (pos.z < 0 || pos.z >= CHUNK_SIZE) return false;
     return true;
 }
 
-bool Chunk::isVoxelSolid(const ivec3 &pos) const {
+bool Chunk::isVoxelSolid(const ivec3 pos) const {
     assert(isVoxelInBounds(pos));
-    return getVoxel(pos) > Voxel::AIR;
+    return Voxel::isSolid(getVoxel(pos));
 }
 
-[[nodiscard]] Voxel::Id Chunk::getVoxel(const ivec3 &pos) const {
+[[nodiscard]] Voxel::Id Chunk::getVoxel(const ivec3 pos) const {
     assert(isVoxelInBounds(pos));
     return voxels[indexVoxel(pos.x, pos.y, pos.z)];
 }
 
-void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
+void Chunk::setVoxel(const ivec3 pos, const Voxel::Id voxel) {
     assert(isVoxelInBounds(pos));
     voxels[indexVoxel(pos.x, pos.y, pos.z)] = voxel;
 }
 
+AABB Chunk::getAabb(const ivec2 chunkPos) {
+    const auto pos = Location{ivec3{0}, chunkPos}.getGlobalPos();
+    return {
+        static_cast<float>(pos.x), 0, static_cast<float>(pos.z),
+        static_cast<float>(pos.x) + CHUNK_SIZE, LEVEL_HEIGHT, static_cast<float>(pos.z) + CHUNK_SIZE
+    };
+}
+
 /// Level
 
-bool Level::hasChunk(const ivec2 &chunkPos) const { ZoneScoped;
+bool Level::hasChunk(const ivec2 chunkPos) const { ZoneScoped;
     return chunks.contains(chunkPos);
 }
 
-void Level::createChunk(const ivec2 &chunkPos) { ZoneScoped;
-    ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos));
+void Level::createChunk(const ivec2 chunkPos) { ZoneScoped;
+    assert(!hasChunk(chunkPos));
     chunks[chunkPos] = std::make_unique<Chunk>();
-    // dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));
 }
 
-void Level::removeChunk(const ivec2 &chunkPos) { ZoneScoped;
+void Level::removeChunk(const ivec2 chunkPos) { ZoneScoped;
     chunks[chunkPos].reset();
     chunks.erase(chunkPos);
 }
 
-void Level::genChunk(const ivec2 &chunkPos) { ZoneScoped;
+void Level::genChunk(const ivec2 chunkPos) { ZoneScoped;
     Chunk *chunk = getChunk(chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)
 
@@ -95,7 +102,7 @@ Chunk* Level::getChunk(const ivec2 chunkPos) { ZoneScoped;
     return chunks[chunkPos].get();
 }
 
-bool Level::isVoxelInBounds(const Location &loc) {
+bool Level::isVoxelInBounds(const Location loc) {
     // return Chunk::isVoxelInBounds(loc.pos);
 
     // TODO: should it check if a chunk at this loc exists?
@@ -103,7 +110,7 @@ bool Level::isVoxelInBounds(const Location &loc) {
     return loc.pos.y >= 0 && loc.pos.y < LEVEL_HEIGHT;
 }
 
-bool Level::isVoxelSolid(const Location &loc) {
+bool Level::isVoxelSolid(const Location loc) {
     if (!isVoxelInBounds(loc))
         return false;
 
@@ -112,29 +119,29 @@ bool Level::isVoxelSolid(const Location &loc) {
     return chunk->isVoxelSolid(loc.pos);
 }
 
-[[nodiscard]] Voxel::Id Level::getVoxel(const Location &loc) {
+[[nodiscard]] Voxel::Id Level::getVoxel(const Location loc) {
     const auto chunk = getChunk(loc.chunkPos);
-    ASSERT_AND_RETURN(chunk != nullptr, Voxel::AIR)
+    assert(chunk != nullptr);
     return chunk->getVoxel(loc.pos);
 }
 
-[[nodiscard]] Voxel::Id Level::getVoxelOrAir(const Location &loc) {
+[[nodiscard]] Voxel::Id Level::getVoxelOrAir(const Location loc) {
     if (!isVoxelInBounds(loc))
         return Voxel::AIR;
     return getVoxel(loc);
 }
 
-void Level::setVoxel(const Location &loc, const Voxel::Id voxel) {
+void Level::setVoxel(const Location loc, const Voxel::Id voxel) {
     const auto chunk = getChunk(loc.chunkPos);
     ASSERT_AND_RETURN_VOID(chunk != nullptr)
     chunk->setVoxel(loc.pos, voxel);
 }
 
-AABB Level::getVoxelAABB(const ivec3 &pos) {
+AABB Level::getVoxelAABB(const ivec3 pos) {
     return AABB(pos.x, pos.y, pos.z, pos.x + 1, pos.y + 1, pos.z + 1);
 }
 
-void addAABBs(const ivec3 &pos, const AABB &box, std::vector<AABB>& boxes) {
+void addAABBs(const ivec3 pos, const AABB &box, std::vector<AABB>& boxes) {
     const AABB aabb = Level::getVoxelAABB(pos);
     if (box.intersects(aabb))
         boxes.push_back(aabb);
@@ -154,8 +161,8 @@ std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
                     continue;
 
                 const ivec3 pos = {x, y, z};
-                const auto voxel = getVoxel(pos);
-                if (voxel <= Voxel::AIR)
+                const auto voxel = getVoxelOrAir(pos);
+                if (!Voxel::isSolid(voxel))
                     continue;
                 addAABBs(pos, box, boxes);
             }
@@ -166,7 +173,7 @@ std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
     return boxes;
 }
 
-void Level::markChunkDirty(const ivec2 &chunkPos) { ZoneScoped;
+void Level::markChunkDirty(const ivec2 chunkPos) { ZoneScoped;
     {
         std::lock_guard lock(game->getMesher().mtx);
         for (const auto &otherChunkPos : dirtyChunksQueue) {
@@ -180,11 +187,11 @@ void Level::markChunkDirty(const ivec2 &chunkPos) { ZoneScoped;
 }
 
 
-void Level::markVoxelDirty(const Location &loc) {
+void Level::markVoxelDirty(const Location loc) {
     markChunkDirty(loc.chunkPos);
 }
 
-void Level::markVoxelDirtyAndNeighbours(const Location &loc) { ZoneScoped;
+void Level::markVoxelDirtyAndNeighbours(const Location loc) { ZoneScoped;
     std::queue<ivec2> q;
     q.push(loc.chunkPos);
 

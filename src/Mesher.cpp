@@ -13,7 +13,7 @@ public:
     bool exists[3][3];
     ivec2 center;
 
-    void update(Level* level, ivec2 centerPos) {
+    void update(Level* level, const ivec2 centerPos) {
         center = centerPos;
         std::lock_guard lock(level->mutex);
         for(int x = -1; x <= 1; ++x) {
@@ -29,7 +29,7 @@ public:
         }
     }
 
-    Voxel::Id getVoxelOrAir(const Location& loc) const {
+    [[nodiscard]] Voxel::Id getVoxelOrAir(const Location& loc) const {
         if (loc.pos.y < 0 || loc.pos.y >= LEVEL_HEIGHT) return Voxel::AIR;
         ivec2 offset = loc.chunkPos - center;
         if (offset.x >= -1 && offset.x <= 1 && offset.y >= -1 && offset.y <= 1) {
@@ -41,8 +41,8 @@ public:
         return Voxel::AIR;
     }
 
-    bool isVoxelSolid(const Location& loc) const {
-        return getVoxelOrAir(loc) > Voxel::AIR;
+    [[nodiscard]] bool isVoxelSolid(const Location& loc) const {
+        return Voxel::isSolid(getVoxelOrAir(loc));
     }
 };
 

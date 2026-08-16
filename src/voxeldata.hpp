@@ -16,8 +16,8 @@ namespace Voxel {
         MAX
     };
 
-    constexpr bool isSolid(const Id &id) {
-        return id > 0;
+    constexpr bool isSolid(const Id id) {
+        return id > AIR;
     }
 }
 

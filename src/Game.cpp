@@ -108,7 +108,7 @@ void Game::draw() {
 
     {
         ZoneScopedN("voxels");
-        for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
+        for (const auto& [chunksPos, chunk]: curLevel->getChunks()) {
             if (chunk->hidden)
                 continue;
 
@@ -119,6 +119,10 @@ void Game::draw() {
 
             chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
         }
+    }
+
+    for (const auto& [chunksPos, chunk]: curLevel->getChunks()) {
+        debugDrawAABB(Chunk::getAabb(chunksPos), chunk->mesh == nullptr ? RED : chunk->hidden ? YELLOW : GREEN);
     }
 
     for (const auto &entity: entities)
@@ -160,6 +164,6 @@ void Game::drawDebug() {
     window.DrawFPS(2, 2);
     drawText(std::format("T : {}, Q: {}", debugStats.tris, debugStats.tris / 2));
     drawText(std::format("X : {:.2f}\nY: {:.2f}\nZ: {:.2f}", playerPos.x, playerPos.y, playerPos.z), raylib::Color::Green());
-    drawText(std::format("C : {}, {}", floorDiv(playerPos.x, CHUNK_SIZE), floorDiv(playerPos.z, CHUNK_SIZE)), raylib::Color::SkyBlue());
+    drawText(std::format("C : {}, {}", floori(playerPos.x / CHUNK_SIZE), floori(playerPos.z / CHUNK_SIZE)), raylib::Color::SkyBlue());
     drawText(std::format("CU: {}", curLevel->dirtyChunksQueue.size()), raylib::Color::SkyBlue());
 }
