@@ -241,7 +241,7 @@ public:
     }
 
     [[nodiscard]] std::string toString() const {
-        return std::format("AABB({}, {}, {} to {}, {}, {})", x0, y0, z0, x1, y1, z1);
+        return std::format("AABB({:.2f}, {:.2f}, {:.2f} to {:.2f}, {:.2f}, {:.2f})", x0, y0, z0, x1, y1, z1);
     }
 };
 

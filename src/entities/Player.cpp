@@ -82,12 +82,12 @@ void Player::draw() {
 
 void Player::draw2d() {
     const auto vec = GameInput::getVec(KEY_A, KEY_D, KEY_W, KEY_S);
-    game->DrawTextB(std::format("{} {}", vec.x, vec.y), 8, 170, 12, raylib::Color::White());
+    game->DrawTextB(std::format("{:.2f} {:.2f}", vec.x, vec.y), 8, 170, 12, raylib::Color::White());
     const auto aabb = getAabb();
 
     auto dir = getDir();
     auto eye = getEyePos();
-    game->DrawTextB(std::format("onGround: {}\n{}\naabb area: {} {} {}\n\neye pos: {:.2f} {:.2f} {:.2f}\ndir: {:.2f} {:.2f} {:.2f}",
+    game->DrawTextB(std::format("onGround: {}\n{}\naabb area: {:.2f} {:.2f} {:.2f}\n\neye pos: {:.2f} {:.2f} {:.2f}\ndir: {:.2f} {:.2f} {:.2f}",
         onGround, aabb->toString(), aabb->area().x, aabb->area().y, aabb->area().z,
         eye.x, eye.y, eye.z, dir.x, dir.y, dir.z),
         8, 195, 12, raylib::Color::White());
