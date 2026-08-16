@@ -13,6 +13,7 @@
 #include "voxeldata.hpp"
 #include "tracy/Tracy.hpp"
 #include "utils/noise.hpp"
+#include "utils/random.hpp"
 
 /// Chunk
 
@@ -79,14 +80,17 @@ void Level::removeChunk(const ivec2 chunkPos) { ZoneScoped;
 
 void Level::genChunk(const ivec2 chunkPos) { ZoneScoped;
     Chunk *chunk = getChunk(chunkPos);
-    ASSERT_AND_RETURN_VOID(chunk != nullptr)
+    assert(chunk != nullptr);
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
             const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
             for (int y = 0; y < LEVEL_HEIGHT; ++y) {
-                if (height < y)
+                if (y > height) {
+                    if (y == height + 1 && rng::randFloat() < 0.25)
+                        chunk->setVoxel(ivec3(x, y, z), Voxel::TALL_GRASS);
                     continue;
+                }
 
                 chunk->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
             }
