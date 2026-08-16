@@ -83,9 +83,7 @@ void Level::genChunk(const ivec2 chunkPos) { ZoneScoped;
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
-            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
             const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
-            // printf("%f\n", );
             for (int y = 0; y < LEVEL_HEIGHT; ++y) {
                 if (height < y)
                     continue;
@@ -155,7 +153,6 @@ std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
 
     for (int x = a.x; x < b.x; x++) {
         for (int z = a.z; z < b.z; z++) {
-            // if (hasChunkAt(x, Level::DEPTH / 2, z)) {
             for (int y = a.y - 1; y < b.y; y++) {
                 if (y < 0 || y >= LEVEL_HEIGHT)
                     continue;
@@ -166,7 +163,6 @@ std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
                     continue;
                 addAABBs(pos, box, boxes);
             }
-            // }
         }
     }
 
@@ -200,15 +196,6 @@ void Level::markVoxelDirtyAndNeighbours(const Location loc) { ZoneScoped;
 
     if (loc.pos.z == 0) q.push(loc.chunkPos + ivec2{0, -1});
     if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
-
-    // {
-    //     std::lock_guard lock(chunkerMtx);
-    //     while (!q.empty()) {
-    //         dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
-    //         q.pop();
-    //     }
-    // }
-    // chunkerCv.notify_one();
 
     while (!q.empty()) {
         markChunkDirty(q.front());
