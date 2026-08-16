@@ -14,6 +14,15 @@ namespace rng {
         return std::rand();
     }
 
+    [[nodiscard]] inline bool randBool() {
+        constexpr auto midpoint = RAND_MAX / 2;
+        return rand() > midpoint;
+    }
+
+    [[nodiscard]] inline float randFloat() {
+        return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    }
+
     // inclusive to
     [[nodiscard]] inline int range(const int from, const int to) {
         return rand() % (to - from + 1) + from;
