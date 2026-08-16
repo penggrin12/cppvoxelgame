@@ -40,10 +40,6 @@ public:
         }
         return Voxel::AIR;
     }
-
-    [[nodiscard]] bool isVoxelSolid(const Location& loc) const {
-        return Voxel::isSolid(getVoxelOrAir(loc));
-    }
 };
 
 constexpr int Mesher::ao(const int side1, const int side2, const int corner) {
@@ -103,7 +99,7 @@ void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel:
         const auto sideNormal = CUBE_SIDES[i].normal;
         const auto sideLoc = Location::fromGlobalPos(loc.getGlobalPos() + sideNormal);
 
-        if (cache.isVoxelSolid(sideLoc)) continue;
+        if (Voxel::isRenderable(cache.getVoxelOrAir(sideLoc))) continue;
 
         addFace(meshTool, cache, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], loc);
     }

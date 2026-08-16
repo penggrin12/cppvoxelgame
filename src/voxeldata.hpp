@@ -17,6 +17,10 @@ namespace Voxel {
     };
 
     constexpr bool isSolid(const Id id) {
+        return id != AIR && id != TALL_GRASS;
+    }
+
+    constexpr bool isRenderable(const Id id) {
         return id > AIR;
     }
 }
