@@ -115,7 +115,7 @@ bool Level::isVoxelSolid(const Location loc) {
         return false;
 
     const auto chunk = getChunk(loc.chunkPos);
-    ASSERT_AND_RETURN(chunk != nullptr, false)
+    assert(chunk != nullptr);
     return chunk->isVoxelSolid(loc.pos);
 }
 
