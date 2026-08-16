@@ -11,7 +11,7 @@
 class MeshTool {
 private:
     std::vector<vec3> normals;
-    std::vector<ivec3> vertices;
+    std::vector<vec3> vertices;
     std::vector<vec2> uvs;
     std::vector<glm::u8vec4> colors;
 public:
@@ -29,8 +29,8 @@ public:
         colors.reserve(quads * 6);
     }
 
-    void addQuad(const ivec3 a, const ivec3 b, const ivec3 c, const ivec3 d, const vec2 uvA, const vec2 uvB, const vec2 uvC, const vec2 uvD, const vec3 normal, const glm::vec4 light) {
-        const ivec3 verts[4] = {a, b, c, d};
+    void addQuad(const vec3 a, const vec3 b, const vec3 c, const vec3 d, const vec2 uvA, const vec2 uvB, const vec2 uvC, const vec2 uvD, const vec3 normal, const glm::vec4 light) {
+        const vec3 verts[4] = {a, b, c, d};
         const vec2 texCoords[4] = {uvA, uvB, uvC, uvD};
         const uint8_t vertLight[4] = {
             static_cast<uint8_t>(light[0] * 255.0f),

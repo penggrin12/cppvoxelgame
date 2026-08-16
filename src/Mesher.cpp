@@ -5,6 +5,7 @@
 #include "Mesher.hpp"
 
 #include "tracy/Tracy.hpp"
+#include "utils/random.hpp"
 
 
 class MesherCache {
@@ -74,27 +75,36 @@ glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const Locati
     return aos;
 }
 
+QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
+    static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
+    const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
+    constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
+
+    return {
+        {uvOffset.x + inset,          uvOffset.y + uvSize - inset},
+        {uvOffset.x + uvSize - inset, uvOffset.y + uvSize - inset},
+        {uvOffset.x + uvSize - inset, uvOffset.y + inset},
+        {uvOffset.x + inset,          uvOffset.y + inset}
+    };
+}
+
 void Mesher::addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
     const ivec3 a = CUBE_VERTICES[side.v0] + loc.pos;
     const ivec3 b = CUBE_VERTICES[side.v1] + loc.pos;
     const ivec3 c = CUBE_VERTICES[side.v2] + loc.pos;
     const ivec3 d = CUBE_VERTICES[side.v3] + loc.pos;
 
-    static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
-
-    const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
-    constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
-
-    const vec2 uvA = {uvOffset.x + inset,            uvOffset.y + uvSize - inset};
-    const vec2 uvB = {uvOffset.x + uvSize - inset,   uvOffset.y + uvSize - inset};
-    const vec2 uvC = {uvOffset.x + uvSize - inset,   uvOffset.y + inset};
-    const vec2 uvD = {uvOffset.x + inset,            uvOffset.y + inset};
-
+    const auto [uvA, uvB, uvC, uvD] = getQuadUVs(atlasOffset);
     const glm::vec4 ao = getAo(side, cache, loc);
     meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal), ao);
 }
 
 void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel::Id id, const Location &loc) {
+    if (VOXEL_TYPES[id] == Voxel::Type::VEGETATION) {
+        addVegetation(meshTool, id, loc);
+        return;
+    }
+
     for (int i = 0; i < sizeof(CUBE_SIDES) / sizeof(Side); ++i) {
         const auto sideNormal = CUBE_SIDES[i].normal;
         const auto sideLoc = Location::fromGlobalPos(loc.getGlobalPos() + sideNormal);
@@ -102,6 +112,33 @@ void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel:
         if (Voxel::isSolid(cache.getVoxelOrAir(sideLoc))) continue;
 
         addFace(meshTool, cache, CUBE_SIDES[i], VOXEL_ATLAS_OFFSETS[id][i], loc);
+    }
+}
+
+void Mesher::addVegetation(MeshTool &meshTool, const Voxel::Id id, const Location &loc) {
+    static constexpr int CROSS_VERTICES[2][4] = {
+        {0, 5, 6, 3},
+        {1, 4, 7, 2}
+    };
+
+    const auto [uvA, uvB, uvC, uvD] = getQuadUVs(VOXEL_ATLAS_OFFSETS[id][0]);
+
+    // should maybe be dependent on location
+    const vec3 posOffset = {
+        rng::range(-0.2, 0.2), 0, rng::range(-0.2, 0.2)
+    };
+    for (const auto &[v0, v1, v2, v3] : CROSS_VERTICES) {
+        const vec3 a = static_cast<vec3>(CUBE_VERTICES[v0] + loc.pos) + posOffset;
+        const vec3 b = static_cast<vec3>(CUBE_VERTICES[v1] + loc.pos) + posOffset;
+        const vec3 c = static_cast<vec3>(CUBE_VERTICES[v2] + loc.pos) + posOffset;
+        const vec3 d = static_cast<vec3>(CUBE_VERTICES[v3] + loc.pos) + posOffset;
+
+        // doesn't look quite right... maybe the texture makes up for it?
+        // static constexpr glm::vec4 ao = {AO_VALUES[0] * 1.5f, AO_VALUES[0] * 1.5f, AO_VALUES[3], AO_VALUES[3]};
+        static constexpr auto ao = glm::vec4{AO_VALUES[3]}; // no ao
+
+        meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, {0.0f, 1.0f, 0.0f}, ao);
+        meshTool.addQuad(b, a, d, c, uvA, uvB, uvC, uvD, {0.0f, 1.0f, 0.0f}, ao);
     }
 }
 
