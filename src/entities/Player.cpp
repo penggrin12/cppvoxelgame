@@ -111,7 +111,7 @@ void Player::tryPlace(const RaycastHit &ray) const {
 
 [[nodiscard]] bool Player::isChunkInFrustum(const ivec2 &chunkPos) const {
     const auto chunkAABB = Chunk::getAabb(chunkPos);
-    return frustum.AABBoxIn(chunkAABB.getA(), chunkAABB.getB());
+    return frustum.AABBoxIn(glm2rl(chunkAABB.a), glm2rl(chunkAABB.b));
 }
 
 void Player::frustumCulling() { ZoneScoped;

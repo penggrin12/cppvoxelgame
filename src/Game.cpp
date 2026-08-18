@@ -145,7 +145,9 @@ void Game::draw() {
 
     debugRay(ray);
 
+#ifndef NDEBUG
     drawDebug();
+#endif
 }
 
 void Game::drawDebug() {
@@ -161,7 +163,7 @@ void Game::drawDebug() {
 
     const auto playerPos = getPlayer().getPos();
 
-    window.DrawFPS(2, 2);
+    raylib::Window::DrawFPS(2, 2);
     drawText(std::format("T : {}, Q: {}", debugStats.tris, debugStats.tris / 2));
     drawText(std::format("X : {:.2f}\nY: {:.2f}\nZ: {:.2f}", playerPos.x, playerPos.y, playerPos.z), raylib::Color::Green());
     drawText(std::format("C : {}, {}", floori(playerPos.x / CHUNK_SIZE), floori(playerPos.z / CHUNK_SIZE)), raylib::Color::SkyBlue());

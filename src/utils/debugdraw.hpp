@@ -9,13 +9,16 @@
 #include "utils.hpp"
 
 inline void debugDrawVoxel(const Location &loc, const Color color = raylib::Color::Green()) {
+#ifndef NDEBUG
     DrawCubeWiresV(glm2rl(vec3(loc.getGlobalPos()) + vec3{0.5f, 0.5f, 0.5f}), {1, 1, 1}, color);
+#endif
 }
 
 inline void debugDrawAABB(const AABB &aabb, const Color color = raylib::Color::Green()) {
-    DrawCubeWires(glm2rl(vec3(aabb.x0 + aabb.x1, aabb.y0 + aabb.y1, aabb.z0 + aabb.z1) * 0.5f),
-                  aabb.x1 - aabb.x0, aabb.y1 - aabb.y0, aabb.z1 - aabb.z0, color);
-
+#ifndef NDEBUG
+    DrawCubeWires(glm2rl(vec3(aabb.a.x + aabb.b.x, aabb.a.y + aabb.b.y, aabb.a.z + aabb.b.z) * 0.5f),
+                  aabb.b.x - aabb.a.x, aabb.b.y - aabb.a.y, aabb.b.z - aabb.a.z, color);
+#endif
 }
 
 #endif //VOXELGAME_DEBUGDRAW_HPP

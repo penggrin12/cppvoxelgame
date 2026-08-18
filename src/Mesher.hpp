@@ -54,13 +54,14 @@ private:
     static glm::vec4 getAo(const Side &side, const MesherCache &cache, const Location &loc);
 
     static QuadUVs getQuadUVs(const glm::ivec2 &atlasOffset);
-public:
-    std::mutex mtx;
-    std::condition_variable cv;
-
     static void addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const glm::ivec2 &atlasOffset, const Location &loc);
     static void addVoxel(MeshTool &meshTool, const MesherCache &cache, Voxel::Id id, const Location &loc);
     static void addVegetation(MeshTool &meshTool, Voxel::Id id, const Location &loc);
+public:
+    // these should be private...
+    // but some other code depends on them
+    std::mutex mtx;
+    std::condition_variable cv;
 
     void chunkerThread(Level* level);
     void startThread(Level* level);

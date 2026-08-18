@@ -49,14 +49,14 @@ constexpr int Mesher::ao(const int side1, const int side2, const int corner) {
     return 3 - (side1 + side2 + corner);
 }
 
-glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const Location &loc) {
+inline glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const Location &loc) {
     glm::vec4 aos;
     const int vertices[4] = {side.v0, side.v1, side.v2, side.v3};
 
     for (int i = 0; i < 4; ++i) {
-        glm::ivec3 vertex = CUBE_VERTICES[vertices[i]];
-        glm::ivec3 D = vertex * 2 - glm::ivec3(1, 1, 1);
-        glm::ivec3 T = D - side.normal;
+        const glm::ivec3 vertex = CUBE_VERTICES[vertices[i]];
+        const glm::ivec3 D = vertex * 2 - glm::ivec3(1, 1, 1);
+        const glm::ivec3 T = D - side.normal;
         glm::ivec3 side1Offset = T, side2Offset = T;
 
         if (T.x != 0) {
@@ -65,17 +65,17 @@ glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const Locati
             side1Offset.z = 0; side2Offset.y = 0;
         }
 
-        Voxel::Id side1 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side1Offset);
-        Voxel::Id side2 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side2Offset);
-        Voxel::Id corner = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + T);
+        const Voxel::Id side1 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side1Offset);
+        const Voxel::Id side2 = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + side2Offset);
+        const Voxel::Id corner = cache.getVoxelOrAir(loc.getGlobalPos() + side.normal + T);
 
-        int aoVal = ao(Voxel::isSolid(side1) ? 1 : 0, Voxel::isSolid(side2) ? 1 : 0, Voxel::isSolid(corner) ? 1 : 0);
+        const int aoVal = ao(Voxel::isSolid(side1) ? 1 : 0, Voxel::isSolid(side2) ? 1 : 0, Voxel::isSolid(corner) ? 1 : 0);
         aos[i] = AO_VALUES[aoVal];
     }
     return aos;
 }
 
-QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
+inline QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
     static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
     const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
     constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
@@ -88,7 +88,7 @@ QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
     };
 }
 
-void Mesher::addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
+inline void Mesher::addFace(MeshTool &meshTool, const MesherCache &cache, const Side &side, const ivec2 &atlasOffset, const Location &loc) {
     const ivec3 a = CUBE_VERTICES[side.v0] + loc.pos;
     const ivec3 b = CUBE_VERTICES[side.v1] + loc.pos;
     const ivec3 c = CUBE_VERTICES[side.v2] + loc.pos;
@@ -99,7 +99,7 @@ void Mesher::addFace(MeshTool &meshTool, const MesherCache &cache, const Side &s
     meshTool.addQuad(a, b, c, d, uvA, uvB, uvC, uvD, vec3(side.normal), ao);
 }
 
-void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel::Id id, const Location &loc) {
+inline void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel::Id id, const Location &loc) {
     if (VOXEL_TYPES[id] == Voxel::Type::VEGETATION) {
         addVegetation(meshTool, id, loc);
         return;
@@ -115,7 +115,7 @@ void Mesher::addVoxel(MeshTool &meshTool, const MesherCache &cache, const Voxel:
     }
 }
 
-void Mesher::addVegetation(MeshTool &meshTool, const Voxel::Id id, const Location &loc) {
+inline void Mesher::addVegetation(MeshTool &meshTool, const Voxel::Id id, const Location &loc) {
     static constexpr int CROSS_VERTICES[2][4] = {
         {0, 5, 6, 3},
         {1, 4, 7, 2}
@@ -147,7 +147,6 @@ void Mesher::chunkerThread(Level *level) { ZoneScoped;
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
-    meshTool.reserve(CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE * 6 / 2);
 
     auto cache = std::make_unique<MesherCache>();
 
@@ -162,22 +161,21 @@ void Mesher::chunkerThread(Level *level) { ZoneScoped;
         chunkerLock.unlock();
 
         meshTool.clear();
-
-        {
-            ZoneScopedN("cache->update");
-            cache->update(level, chunkPos); // This briefly locks mutex, memcpy runs, then it unlocks
-        }
+        cache->update(level, chunkPos); // This briefly locks mutex, memcpy runs, then it unlocks
 
         if (!cache->exists[1][1]) continue; // Was this chunk safely unloaded before meshing?
 
-        for (int y = 0; y < LEVEL_HEIGHT; ++y) {
-            for (int z = 0; z < CHUNK_SIZE; ++z) {
-                for (int x = 0; x < CHUNK_SIZE; ++x) {
-                    const ivec3 pos = {x, y, z};
-                    const Voxel::Id voxel = cache->voxels[1][1][x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
+        {
+            ZoneScopedN("addVoxel y-z-x loop");
+            for (int y = 0; y < LEVEL_HEIGHT; ++y) {
+                for (int z = 0; z < CHUNK_SIZE; ++z) {
+                    for (int x = 0; x < CHUNK_SIZE; ++x) {
+                        const ivec3 pos = {x, y, z};
+                        const Voxel::Id voxel = cache->voxels[1][1][x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
 
-                    if (voxel == Voxel::AIR) continue;
-                    addVoxel(meshTool, *cache, voxel, Location(pos, chunkPos));
+                        if (voxel == Voxel::AIR) continue;
+                        addVoxel(meshTool, *cache, voxel, Location(pos, chunkPos));
+                    }
                 }
             }
         }

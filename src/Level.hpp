@@ -99,12 +99,14 @@ public:
     [[nodiscard]] Voxel::Id getVoxelOrAir(Location loc);
     void setVoxel(Location loc, Voxel::Id voxel);
 
-    static AABB getVoxelAABB(ivec3 pos);
+    static constexpr AABB getVoxelAABB(const ivec3 pos) {
+        return {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z), static_cast<float>(pos.x + 1), static_cast<float>(pos.y + 1), static_cast<float>(pos.z + 1)};
+    }
     std::vector<AABB> getCubes(const AABB &box);
 
     void markChunkDirty(ivec2 chunkPos);
-    void markVoxelDirty(Location loc);
-    void markVoxelDirtyAndNeighbours(Location loc);
+    void markVoxelDirty(const Location &loc);
+    void markVoxelDirtyAndNeighbours(const Location &loc);
 };
 
 
