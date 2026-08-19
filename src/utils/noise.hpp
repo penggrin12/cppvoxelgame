@@ -4,24 +4,24 @@
 
 #ifndef VOXELGAME_NOISE_HPP
 #define VOXELGAME_NOISE_HPP
-#include <ctime>
-#include <glm/vec2.hpp>
+
+#include <glm/glm.hpp>
 #include "fastnoiselite/FastNoiseLite.h"
 
 namespace noise {
-    inline FastNoiseLite fastNoise{0};
+    inline constexpr FastNoiseLite<FractalType::None, NoiseType::OpenSimplex2> shared{0};
 
     inline float at(const float x, const float y) {
-        return fastNoise.GetNoise(x, y);
+        return shared.GetNoise(x, y);
     }
-    inline float at(const glm::vec2 &pos) {
-        return noise::at(pos.x, pos.y);
+    inline float at(const glm::vec2 pos) {
+        return at(pos.x, pos.y);
     }
     inline float at(const int x, const int y) {
-        return noise::at(static_cast<float>(x), static_cast<float>(y));
+        return at(static_cast<float>(x), static_cast<float>(y));
     }
-    inline float at(const glm::ivec2 &pos) {
-        return noise::at(pos.x, pos.y);
+    inline float at(const glm::ivec2 pos) {
+        return at(pos.x, pos.y);
     }
 }
 
