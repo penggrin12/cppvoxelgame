@@ -4,7 +4,8 @@
 
 #ifndef VOXELGAME_STORAGE_HPP
 #define VOXELGAME_STORAGE_HPP
-#include <glm/vec2.hpp>
+
+#include <glm/glm.hpp>
 
 #include "Level.hpp"
 

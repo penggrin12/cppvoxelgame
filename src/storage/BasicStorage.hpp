@@ -4,6 +4,7 @@
 
 #ifndef VOXELGAME_BASICSTORAGE_HPP
 #define VOXELGAME_BASICSTORAGE_HPP
+
 #include <filesystem>
 #include <gzip/compress.hpp>
 #include <gzip/decompress.hpp>
