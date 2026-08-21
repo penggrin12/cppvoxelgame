@@ -15,7 +15,7 @@
 #include "phys/AABB.hpp"
 #include "utils/math.hpp"
 
-constexpr int LEVEL_HEIGHT = 128;
+constexpr int LEVEL_HEIGHT = 256;
 constexpr int CHUNK_SIZE = 16; // squared (XZ), Y is as tall as the level
 
 constexpr static size_t CHUNK_VOXELS_TOTAL = CHUNK_SIZE * LEVEL_HEIGHT * CHUNK_SIZE;
