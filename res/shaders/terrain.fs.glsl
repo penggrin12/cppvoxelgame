@@ -17,6 +17,8 @@ out vec4 finalColor;
 void main()
 {
     vec4 texelColor = texture(texture0, fragTexCoord);
+    if (texelColor.a < 0.5)
+        discard;
 
     float flatShading = abs(fragNormal.y) * 1.0 +
         abs(fragNormal.x) * 0.8 +

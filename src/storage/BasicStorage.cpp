@@ -2,13 +2,11 @@
 // Created by penggrin on 29.03.2026.
 //
 
-#include "BasicStorage.hpp"
-
 #include <filesystem>
 #include <fstream>
+#include <tracy/Tracy.hpp>
 
-#include "tracy/Tracy.hpp"
-#include "utils/utils.hpp"
+#include "BasicStorage.hpp"
 
 const auto BASE_DIR = std::filesystem::path("saves/");
 
@@ -29,19 +27,17 @@ void BasicStorage::loadChunk(const glm::ivec2 &chunkPos, Chunk *chunk) { ZoneSco
     const auto filePath = getChunkPath(chunkPos);
     const auto fileSize = std::filesystem::file_size(filePath);
 
-    const auto buff = new char[CHUNK_VOXELS_TOTAL];
+    thread_local std::array<char, CHUNK_VOXELS_TOTAL> buff;
 
     std::ifstream file;
-    file.open(filePath, std::ios::binary | std::ios::out);
-    file.read(buff, fileSize);
+    file.open(filePath, std::ios::binary | std::ios::in);
+    file.read(buff.data(), static_cast<std::streamsize>(fileSize));
     file.close();
 
     std::string dataOut;
-    decomp.decompress(dataOut, buff, fileSize);
+    decomp.decompress(dataOut, buff.data(), fileSize);
 
     memcpy(chunk->getVoxels(), dataOut.c_str(), CHUNK_VOXELS_TOTAL);
-
-    delete[] buff;
 }
 
 void BasicStorage::saveChunk(const glm::ivec2 &chunkPos, Chunk *chunk) { ZoneScoped;
@@ -50,6 +46,6 @@ void BasicStorage::saveChunk(const glm::ivec2 &chunkPos, Chunk *chunk) { ZoneSco
 
     std::ofstream file;
     file.open(getChunkPath(chunkPos), std::ios::binary | std::ios::in);
-    file.write(dataOut.c_str(), dataOut.size());
+    file.write(dataOut.c_str(), static_cast<std::streamsize>(dataOut.size()));
     file.close();
 }

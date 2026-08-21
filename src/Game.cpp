@@ -79,23 +79,6 @@ void Game::logic() {
         addEntity(ent);
     }
 
-    std::vector<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> toSwap;
-    {
-        std::lock_guard lock(curLevel->mutex);
-        while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
-            toSwap.push_back(std::move(curLevel->chunksReadyToSwapMeshQueue.front()));
-            curLevel->chunksReadyToSwapMeshQueue.pop();
-        }
-    }
-
-    // We upload and apply to map chunks unblocked
-    for (auto& [chunkPos, newMesh] : toSwap) {
-        newMesh->Upload();
-        if (curLevel->hasChunk(chunkPos)) {
-            curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
-        }
-    }
-
     lua.call("logic", GetFrameTime());
 }
 
@@ -110,13 +93,30 @@ void Game::draw() {
 
     rlDisableBackfaceCulling();
     rlDisableDepthMask();
-    res.skyMesh.Draw(res.skyMaterial, raylib::Matrix::Identity().Translate(eyePos.x, eyePos.y, eyePos.z));
+    res.skyMesh.Draw(res.skyMaterial, raylib::Matrix::Translate(eyePos.x, eyePos.y, eyePos.z));
     rlEnableDepthMask();
     rlEnableBackfaceCulling();
 
+    std::vector<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> toSwap;
+    {
+        auto lock = curLevel->main_thread_lock();
+        while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
+            toSwap.push_back(std::move(curLevel->chunksReadyToSwapMeshQueue.front()));
+            curLevel->chunksReadyToSwapMeshQueue.pop();
+        }
+    }
+
+    // We upload and apply to map chunks unblocked
+    for (auto& [chunkPos, newMesh] : toSwap) {
+        newMesh->Upload();
+        if (curLevel->hasChunk(chunkPos)) {
+            curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
+        }
+    }
+
     {
         ZoneScopedN("voxels");
-        for (auto& [chunksPos, chunk]: curLevel->getChunks()) {
+        for (const auto& [chunksPos, chunk]: curLevel->getChunks()) {
             if (chunk->hidden)
                 continue;
 
@@ -127,6 +127,10 @@ void Game::draw() {
 
             chunk->mesh->Draw(res.terrainMaterial, raylib::Matrix::Translate(chunksPos.x * CHUNK_SIZE, 0, chunksPos.y * CHUNK_SIZE));
         }
+    }
+
+    for (const auto& [chunksPos, chunk]: curLevel->getChunks()) {
+        debugDrawAABB(Chunk::getAabb(chunksPos), chunk->mesh == nullptr ? RED : chunk->hidden ? YELLOW : GREEN);
     }
 
     for (const auto &entity: entities) {
@@ -153,7 +157,10 @@ void Game::draw() {
 
     debugRay(ray);
 
+    raylib::Window::DrawFPS(2, 2);
+#ifndef NDEBUG
     drawDebug();
+#endif
 }
 
 void Game::drawDebug() {
@@ -172,6 +179,6 @@ void Game::drawDebug() {
     window.DrawFPS(2, 2);
     drawText(std::format("T : {}, Q: {}", debugStats.tris, debugStats.tris / 2));
     drawText(std::format("X : {:.2f}\nY: {:.2f}\nZ: {:.2f}", playerPos.x, playerPos.y, playerPos.z), raylib::Color::Green());
-    drawText(std::format("C : {}, {}", floorDiv(playerPos.x, CHUNK_SIZE), floorDiv(playerPos.z, CHUNK_SIZE)), raylib::Color::SkyBlue());
+    drawText(std::format("C : {}, {}", floori(playerPos.x / CHUNK_SIZE), floori(playerPos.z / CHUNK_SIZE)), raylib::Color::SkyBlue());
     drawText(std::format("CU: {}", curLevel->dirtyChunksQueue.size()), raylib::Color::SkyBlue());
 }

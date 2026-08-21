@@ -21,23 +21,19 @@ void Entity::setPos(const vec3 &newPos) {
 
 void Entity::move(vec3 delta) { ZoneScoped;
     std::vector<AABB> aabbs = level->getCubes(bb.expand(delta));
-
     const vec3 originalDelta = delta;
 
-    for (AABB& box : aabbs) {
-        delta.y = box.clipYCollide(bb, delta.y);
-    }
-    bb.move(0, delta.y, 0);
+    for (AABB& box : aabbs)
+        delta.y = box.clipCollide<Axis::Y>(bb, delta.y);
+    bb.move<Axis::Y>(delta.y);
 
-    for (AABB& box : aabbs) {
-        delta.x = box.clipXCollide(bb, delta.x);
-    }
-    bb.move(delta.x, 0, 0);
+    for (AABB& box : aabbs)
+        delta.x = box.clipCollide<Axis::X>(bb, delta.x);
+    bb.move<Axis::X>(delta.x);
 
-    for (AABB& box : aabbs) {
-        delta.z = box.clipZCollide(bb, delta.z);
-    }
-    bb.move(0, 0, delta.z);
+    for (AABB& box : aabbs)
+        delta.z = box.clipCollide<Axis::Z>(bb, delta.z);
+    bb.move<Axis::Z>(delta.z);
 
     onGround = (originalDelta.y < 0.0f && delta.y > originalDelta.y);
 
@@ -45,7 +41,7 @@ void Entity::move(vec3 delta) { ZoneScoped;
     if (delta.y != originalDelta.y) vel.y = 0.0f;
     if (delta.z != originalDelta.z) vel.z = 0.0f;
 
-    pos.x = (bb.x0 + bb.x1) * 0.5f;
-    pos.y = bb.y0;
-    pos.z = (bb.z0 + bb.z1) * 0.5f;
+    pos.x = (bb.a.x + bb.b.x) * 0.5f;
+    pos.y = bb.a.y;
+    pos.z = (bb.a.z + bb.b.z) * 0.5f;
 }

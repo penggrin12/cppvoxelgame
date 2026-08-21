@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <algorithm>
 
 #include "Level.hpp"
 
@@ -13,6 +14,7 @@
 #include "voxeldata.hpp"
 #include "tracy/Tracy.hpp"
 #include "utils/noise.hpp"
+#include "utils/random.hpp"
 
 /// Chunk
 
@@ -31,57 +33,65 @@ Voxel::Id* Chunk::getVoxels() {
     return voxels;
 }
 
-bool Chunk::isVoxelInBounds(const ivec3 &pos) {
+bool Chunk::isVoxelInBounds(const ivec3 pos) {
     if (pos.x < 0 || pos.x >= CHUNK_SIZE) return false;
     if (pos.y < 0 || pos.y >= LEVEL_HEIGHT) return false;
     if (pos.z < 0 || pos.z >= CHUNK_SIZE) return false;
     return true;
 }
 
-bool Chunk::isVoxelSolid(const ivec3 &pos) const {
+bool Chunk::isVoxelSolid(const ivec3 pos) const {
     assert(isVoxelInBounds(pos));
-    return getVoxel(pos) > Voxel::AIR;
+    return Voxel::isSolid(getVoxel(pos));
 }
 
-[[nodiscard]] Voxel::Id Chunk::getVoxel(const ivec3 &pos) const {
+[[nodiscard]] Voxel::Id Chunk::getVoxel(const ivec3 pos) const {
     assert(isVoxelInBounds(pos));
     return voxels[indexVoxel(pos.x, pos.y, pos.z)];
 }
 
-void Chunk::setVoxel(const ivec3 &pos, const Voxel::Id voxel) {
+void Chunk::setVoxel(const ivec3 pos, const Voxel::Id voxel) {
     assert(isVoxelInBounds(pos));
     voxels[indexVoxel(pos.x, pos.y, pos.z)] = voxel;
 }
 
+AABB Chunk::getAabb(const ivec2 chunkPos) {
+    const auto pos = Location{ivec3{0}, chunkPos}.getGlobalPos();
+    return {
+        static_cast<float>(pos.x), 0, static_cast<float>(pos.z),
+        static_cast<float>(pos.x) + CHUNK_SIZE, LEVEL_HEIGHT, static_cast<float>(pos.z) + CHUNK_SIZE
+    };
+}
+
 /// Level
 
-bool Level::hasChunk(const ivec2 &chunkPos) const { ZoneScoped;
+bool Level::hasChunk(const ivec2 chunkPos) const {
     return chunks.contains(chunkPos);
 }
 
-void Level::createChunk(const ivec2 &chunkPos) { ZoneScoped;
-    ASSERT_AND_RETURN_VOID(!hasChunk(chunkPos));
+void Level::createChunk(const ivec2 chunkPos) {
+    assert(!hasChunk(chunkPos));
     chunks[chunkPos] = std::make_unique<Chunk>();
-    // dirtyChunksQueue.emplace(chunkPos, getChunk(chunkPos));
 }
 
-void Level::removeChunk(const ivec2 &chunkPos) { ZoneScoped;
+void Level::removeChunk(const ivec2 chunkPos) {
     chunks[chunkPos].reset();
     chunks.erase(chunkPos);
 }
 
-void Level::genChunk(const ivec2 &chunkPos) { ZoneScoped;
+void Level::genChunk(const ivec2 chunkPos) { ZoneScoped;
     Chunk *chunk = getChunk(chunkPos);
-    ASSERT_AND_RETURN_VOID(chunk != nullptr)
+    assert(chunk != nullptr);
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
-            // const auto height = static_cast<int>(std::floor(noise.GetColor(x, z).r / 255.0 * 16));
             const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
-            // printf("%f\n", );
             for (int y = 0; y < LEVEL_HEIGHT; ++y) {
-                if (height < y)
+                if (y > height) {
+                    if (y == height + 1 && rng::randFloat() < 0.25)
+                        chunk->setVoxel(ivec3(x, y, z), Voxel::TALL_GRASS);
                     continue;
+                }
 
                 chunk->setVoxel(ivec3(x, y, z), height == y ? Voxel::GRASS : Voxel::DIRT);
             }
@@ -89,7 +99,7 @@ void Level::genChunk(const ivec2 &chunkPos) { ZoneScoped;
     }
 }
 
-Chunk* Level::getChunk(const ivec2 chunkPos) { ZoneScoped;
+Chunk* Level::getChunk(const ivec2 chunkPos) {
     if (!hasChunk(chunkPos))
         return nullptr;
     return chunks[chunkPos].get();
@@ -108,13 +118,13 @@ bool Level::isVoxelSolid(const Location &loc) {
         return false;
 
     const auto chunk = getChunk(loc.chunkPos);
-    ASSERT_AND_RETURN(chunk != nullptr, false)
+    assert(chunk != nullptr);
     return chunk->isVoxelSolid(loc.pos);
 }
 
 [[nodiscard]] Voxel::Id Level::getVoxel(const Location &loc) {
     const auto chunk = getChunk(loc.chunkPos);
-    ASSERT_AND_RETURN(chunk != nullptr, Voxel::AIR)
+    assert(chunk != nullptr);
     return chunk->getVoxel(loc.pos);
 }
 
@@ -130,49 +140,36 @@ void Level::setVoxel(const Location &loc, const Voxel::Id voxel) {
     chunk->setVoxel(loc.pos, voxel);
 }
 
-AABB Level::getVoxelAABB(const ivec3 &pos) {
-    return AABB(pos.x, pos.y, pos.z, pos.x + 1, pos.y + 1, pos.z + 1);
-}
-
-void addAABBs(const ivec3 &pos, const AABB &box, std::vector<AABB>& boxes) {
-    const AABB aabb = Level::getVoxelAABB(pos);
-    if (box.intersects(aabb))
-        boxes.push_back(aabb);
-}
-
-std::vector<AABB> Level::getCubes(const AABB &box) { ZoneScoped;
+std::vector<AABB> Level::getCubes(const AABB &box) {
     std::vector<AABB> boxes = {};
 
-    const ivec3 &a = {floori(box.x0), floori(box.y0), floori(box.z0)};
-    const ivec3 &b = {floori(box.x1 + 1), floori(box.y1 + 1), floori(box.z1 + 1)};
+    const ivec3 &a = {floori(box.a.x), floori(box.a.y), floori(box.a.z)};
+    const ivec3 &b = {floori(box.b.x + 1), floori(box.b.y + 1), floori(box.b.z + 1)};
 
     for (int x = a.x; x < b.x; x++) {
         for (int z = a.z; z < b.z; z++) {
-            // if (hasChunkAt(x, Level::DEPTH / 2, z)) {
             for (int y = a.y - 1; y < b.y; y++) {
                 if (y < 0 || y >= LEVEL_HEIGHT)
                     continue;
 
                 const ivec3 pos = {x, y, z};
-                const auto voxel = getVoxel(pos);
-                if (voxel <= Voxel::AIR)
+                const auto voxel = getVoxelOrAir(pos);
+                if (!Voxel::isSolid(voxel))
                     continue;
-                addAABBs(pos, box, boxes);
+                if (const auto aabb = getVoxelAABB(pos); box.intersects(aabb))
+                    boxes.push_back(aabb);
             }
-            // }
         }
     }
 
     return boxes;
 }
 
-void Level::markChunkDirty(const ivec2 &chunkPos) { ZoneScoped;
+void Level::markChunkDirty(const ivec2 chunkPos) { ZoneScoped;
     {
         std::lock_guard lock(game->getMesher().mtx);
-        for (const auto &otherChunkPos : dirtyChunksQueue) {
-            if (otherChunkPos == chunkPos)
-                return;
-        }
+        if (std::ranges::contains(dirtyChunksQueue, chunkPos))
+            return;
 
         dirtyChunksQueue.push_back(chunkPos);
     }
@@ -193,15 +190,6 @@ void Level::markVoxelDirtyAndNeighbours(const Location &loc) { ZoneScoped;
 
     if (loc.pos.z == 0) q.push(loc.chunkPos + ivec2{0, -1});
     if (loc.pos.z == CHUNK_SIZE - 1) q.push(loc.chunkPos + ivec2{0, 1});
-
-    // {
-    //     std::lock_guard lock(chunkerMtx);
-    //     while (!q.empty()) {
-    //         dirtyChunksQueue.emplace(q.front(), getChunk(q.front()));
-    //         q.pop();
-    //     }
-    // }
-    // chunkerCv.notify_one();
 
     while (!q.empty()) {
         markChunkDirty(q.front());

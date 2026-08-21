@@ -21,11 +21,25 @@ using ivec3 = glm::ivec3;
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 
-enum class Axis : int {
-    X = 0,
-    Y,
-    Z
-};
+enum class Axis : glm::length_t { X, Y, Z };
+
+constexpr Axis nextAxis(const Axis axis) {
+    switch (axis) {
+        case Axis::X: return Axis::Y;
+        case Axis::Y: return Axis::Z;
+        case Axis::Z: return Axis::X;
+    }
+    std::unreachable();
+}
+
+constexpr Axis prevAxis(const Axis axis) {
+    switch (axis) {
+        case Axis::X: return Axis::Z;
+        case Axis::Y: return Axis::X;
+        case Axis::Z: return Axis::Y;
+    }
+    std::unreachable();
+}
 
 // clangd REALLY wants these here
 template<typename T, glm::qualifier Q>
@@ -38,8 +52,8 @@ template<typename T, glm::qualifier Q>
 struct std::hash<glm::vec<4, T, Q> >;
 
 template <Axis axis>
-[[nodiscard]] constexpr bool clipAxis(const glm::vec3 &start, const glm::vec3 &end, const float target, glm::vec3 &result) {
-    constexpr int i = static_cast<int>(axis);
+[[nodiscard]] constexpr bool clipAxis(const glm::vec3 start, const glm::vec3 end, const float target, glm::vec3 result) {
+    constexpr auto i = static_cast<glm::length_t>(axis);
     const float deltaAxis = end[i] - start[i];
 
     if (glm::abs(deltaAxis) < 0.000001f)
@@ -54,13 +68,13 @@ template <Axis axis>
     return true;
 }
 
-[[nodiscard]] constexpr float distSqr(const glm::vec3 &a, const glm::vec3 &b) {
+[[nodiscard]] constexpr float distSqr(const glm::vec3 a, const glm::vec3 b) {
     const vec3 diff = a - b;
     return glm::dot(diff, diff);
 }
 
 template <typename T>
-constexpr T normalize(const T &vec) {
+constexpr T normalize(const T vec) {
     if (glm::length(vec) <= 0.00001)
         return glm::zero<T>();
     return glm::normalize(vec);
@@ -73,16 +87,15 @@ constexpr T normalize(const T &vec) {
 #  define CONSTEXPR_IF_SUPPORTED constexpr
 #endif
 
-inline CONSTEXPR_IF_SUPPORTED raylib::Vector3 glm2rl(const glm::vec3 &v) { return {v.x, v.y, v.z}; }
-inline CONSTEXPR_IF_SUPPORTED glm::vec3 rl2glm(const raylib::Vector3& v) { return {v.x, v.y, v.z}; }
+inline CONSTEXPR_IF_SUPPORTED raylib::Vector3 glm2rl(const glm::vec3 v) { return {v.x, v.y, v.z}; }
+inline CONSTEXPR_IF_SUPPORTED glm::vec3 rl2glm(const raylib::Vector3 v) { return {v.x, v.y, v.z}; }
 
 #undef CONSTEXPR_IF_SUPPORTED
 
 template <class ADAPTER>
-typename ADAPTER::container_type & get_container (ADAPTER &a)
-{
+ADAPTER::container_type& get_container(const ADAPTER &a) {
     struct hack : ADAPTER {
-        static typename ADAPTER::container_type & get (ADAPTER &a) {
+        static ADAPTER::container_type& get(const ADAPTER &a) {
             return a.*&hack::c;
         }
     };

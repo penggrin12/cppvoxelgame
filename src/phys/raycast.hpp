@@ -7,22 +7,13 @@
 
 #include "../Level.hpp"
 #include "../utils/utils.hpp"
+#include "utils/debugdraw.hpp"
 
 struct RaycastHit {
     bool hit;
     ivec3 pos;
     ivec3 normal;
 };
-
-inline void debugDrawVoxel(const Location &loc) {
-    DrawCubeWiresV(glm2rl(vec3(loc.getGlobalPos()) + vec3{0.5f, 0.5f, 0.5f}), {1, 1, 1}, raylib::Color::Red());
-}
-
-inline void debugDrawAABB(const AABB &aabb) {
-    DrawCubeWires(glm2rl(vec3(aabb.x0 + aabb.x1, aabb.y0 + aabb.y1, aabb.z0 + aabb.z1) * 0.5f),
-                  aabb.x1 - aabb.x0, aabb.y1 - aabb.y0, aabb.z1 - aabb.z0, raylib::Color::Green());
-
-}
 
 inline RaycastHit raycast(Level* level, const vec3 &origin, const vec3 &dir, const float maxDistance) {
     RaycastHit result{};
