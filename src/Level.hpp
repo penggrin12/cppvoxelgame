@@ -78,9 +78,44 @@ private:
     std::unordered_map<ivec2, std::unique_ptr<Chunk>> chunks;
 public:
     std::mutex mutex;
+    struct MainThreadLock {
+        std::unique_lock<std::mutex> lock;
+        explicit MainThreadLock(Level* level) {
+            level->mainThreadWaiting.store(true, std::memory_order_relaxed);
+            lock = std::unique_lock(level->mutex);
+            level->mainThreadWaiting.store(false, std::memory_order_relaxed);
+        }
+    };
+
+    struct WorkerThreadLock {
+        std::unique_lock<std::mutex> lock;
+        explicit WorkerThreadLock(Level* level) : lock(level->mutex, std::defer_lock) {
+            while (true) {
+                while (level->mainThreadWaiting.load(std::memory_order_relaxed)) {
+                    std::this_thread::yield();
+                }
+                if (!lock.try_lock()) {
+                    std::this_thread::yield();
+                    continue;
+                }
+                if (level->mainThreadWaiting.load(std::memory_order_relaxed)) {
+                    lock.unlock();
+                    std::this_thread::yield();
+                    continue;
+                }
+                break;
+            }
+        }
+    };
+public:
+
+    std::atomic<bool> mainThreadWaiting{false};
 
     std::deque<ivec2> dirtyChunksQueue;
     std::queue<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> chunksReadyToSwapMeshQueue;
+
+    MainThreadLock main_thread_lock() { return MainThreadLock{this}; }
+    WorkerThreadLock worker_thread_lock() { return WorkerThreadLock{this}; }
 
     [[nodiscard]] std::unordered_map<ivec2, std::unique_ptr<Chunk>>& getChunks() { return chunks; }
 

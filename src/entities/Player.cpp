@@ -14,7 +14,7 @@
 #include "tracy/Tracy.hpp"
 
 void Player::iWantToSeeNearbyChunks() const { ZoneScoped;
-    std::lock_guard lock(level->mutex);
+    auto lock = level->main_thread_lock();
 
     const Location myLoc = Location::fromRealGlobalPos(getPos());
     const auto paddedRenderDist = config.renderDist + 1;

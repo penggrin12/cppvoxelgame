@@ -72,23 +72,6 @@ void Game::logic() {
         ent->setPos(getPlayer().getPos());
         addEntity(ent);
     }
-
-    std::vector<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> toSwap;
-    {
-        std::lock_guard lock(curLevel->mutex);
-        while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
-            toSwap.push_back(std::move(curLevel->chunksReadyToSwapMeshQueue.front()));
-            curLevel->chunksReadyToSwapMeshQueue.pop();
-        }
-    }
-
-    // We upload and apply to map chunks unblocked
-    for (auto& [chunkPos, newMesh] : toSwap) {
-        newMesh->Upload();
-        if (curLevel->hasChunk(chunkPos)) {
-            curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
-        }
-    }
 }
 
 void Game::draw() {
@@ -102,9 +85,26 @@ void Game::draw() {
 
     rlDisableBackfaceCulling();
     rlDisableDepthMask();
-    res.skyMesh.Draw(res.skyMaterial, raylib::Matrix::Identity().Translate(eyePos.x, eyePos.y, eyePos.z));
+    res.skyMesh.Draw(res.skyMaterial, raylib::Matrix::Translate(eyePos.x, eyePos.y, eyePos.z));
     rlEnableDepthMask();
     rlEnableBackfaceCulling();
+
+    std::vector<std::pair<ivec2, std::unique_ptr<raylib::Mesh>>> toSwap;
+    {
+        auto lock = curLevel->main_thread_lock();
+        while (!curLevel->chunksReadyToSwapMeshQueue.empty()) {
+            toSwap.push_back(std::move(curLevel->chunksReadyToSwapMeshQueue.front()));
+            curLevel->chunksReadyToSwapMeshQueue.pop();
+        }
+    }
+
+    // We upload and apply to map chunks unblocked
+    for (auto& [chunkPos, newMesh] : toSwap) {
+        newMesh->Upload();
+        if (curLevel->hasChunk(chunkPos)) {
+            curLevel->getChunk(chunkPos)->mesh = std::move(newMesh);
+        }
+    }
 
     {
         ZoneScopedN("voxels");

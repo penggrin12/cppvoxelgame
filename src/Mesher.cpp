@@ -16,7 +16,7 @@ public:
 
     void update(Level* level, const ivec2 centerPos) {
         center = centerPos;
-        std::lock_guard lock(level->mutex);
+        auto lock = level->worker_thread_lock();
         for(int x = -1; x <= 1; ++x) {
             for(int z = -1; z <= 1; ++z) {
                 Chunk* c = level->getChunk(centerPos + ivec2(x, z));
@@ -142,8 +142,8 @@ inline void Mesher::addVegetation(MeshTool &meshTool, const Voxel::Id id, const 
     }
 }
 
-void Mesher::chunkerThread(Level *level) { ZoneScoped;
-    SPDLOG_INFO("chunkerThread started");
+void Mesher::worker(Level *level) { ZoneScoped;
+    SPDLOG_INFO("worker started");
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
@@ -151,14 +151,14 @@ void Mesher::chunkerThread(Level *level) { ZoneScoped;
     auto cache = std::make_unique<MesherCache>();
 
     while (!shouldStop) { ZoneScoped
-        std::unique_lock chunkerLock(mtx);
-        cv.wait(chunkerLock, [&] { return shouldStop || !level->dirtyChunksQueue.empty(); });
+        auto lock = level->worker_thread_lock().lock;
+        cv.wait(lock, [&] { return shouldStop || !level->dirtyChunksQueue.empty(); });
         if (shouldStop) break;
 
         const auto chunkPos = level->dirtyChunksQueue.front();
         ZoneNameF("%d %d", chunkPos.x, chunkPos.y);
         level->dirtyChunksQueue.pop_front();
-        chunkerLock.unlock();
+        lock.unlock();
 
         meshTool.clear();
         cache->update(level, chunkPos); // This briefly locks mutex, memcpy runs, then it unlocks
@@ -184,7 +184,7 @@ void Mesher::chunkerThread(Level *level) { ZoneScoped;
         meshTool.exportToMesh(newMesh.get());
 
         {
-            std::lock_guard lock(level->mutex);
+            auto lock = level->worker_thread_lock();
             if (level->hasChunk(chunkPos)) {
                 level->chunksReadyToSwapMeshQueue.emplace(chunkPos, std::move(newMesh));
                 level->getChunk(chunkPos)->meshDirty = false;
@@ -194,11 +194,15 @@ void Mesher::chunkerThread(Level *level) { ZoneScoped;
 }
 
 void Mesher::startThread(Level *level) {
-    thread = std::thread(&Mesher::chunkerThread, this, level);
+    const static auto threadsToDo = std::min(4u, std::thread::hardware_concurrency() / 2);
+    SPDLOG_INFO("spinning up {} mesher threads", threadsToDo);
+    for (int i = 0; i < threadsToDo; ++i)
+        workerThreads.emplace_back(&Mesher::worker, this, level);
 }
 
 void Mesher::stopThread() {
     shouldStop = true;
     cv.notify_all();
-    thread.join();
+    for (auto& thread : workerThreads)
+        thread.join();
 }

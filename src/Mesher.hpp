@@ -48,7 +48,8 @@ class MesherCache;
 class Mesher {
 private:
     std::atomic<bool> shouldStop{false};
-    std::thread thread;
+
+    std::vector<std::thread> workerThreads = {};
 
     constexpr static int ao(int side1, int side2, int corner);
     static glm::vec4 getAo(const Side &side, const MesherCache &cache, const Location &loc);
@@ -63,7 +64,8 @@ public:
     std::mutex mtx;
     std::condition_variable cv;
 
-    void chunkerThread(Level* level);
+    void worker(Level* level);
+
     void startThread(Level* level);
     void stopThread();
 };
