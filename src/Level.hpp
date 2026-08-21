@@ -76,7 +76,6 @@ public:
 class Level {
 private:
     std::unordered_map<ivec2, std::unique_ptr<Chunk>> chunks;
-public:
     std::mutex mutex;
     struct MainThreadLock {
         std::unique_lock<std::mutex> lock;
@@ -127,12 +126,12 @@ public:
     // nullptr if it doesn't exist
     Chunk* getChunk(ivec2 chunkPos);
 
-    [[nodiscard]] static bool isVoxelInBounds(Location loc);
-    [[nodiscard]] bool isVoxelSolid(Location loc);
+    [[nodiscard]] static bool isVoxelInBounds(const Location &loc);
+    [[nodiscard]] bool isVoxelSolid(const Location &loc);
 
-    [[nodiscard]] Voxel::Id getVoxel(Location loc);
-    [[nodiscard]] Voxel::Id getVoxelOrAir(Location loc);
-    void setVoxel(Location loc, Voxel::Id voxel);
+    [[nodiscard]] Voxel::Id getVoxel(const Location &loc);
+    [[nodiscard]] Voxel::Id getVoxelOrAir(const Location &loc);
+    void setVoxel(const Location &loc, Voxel::Id voxel);
 
     static constexpr AABB getVoxelAABB(const ivec3 pos) {
         return {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z), static_cast<float>(pos.x + 1), static_cast<float>(pos.y + 1), static_cast<float>(pos.z + 1)};

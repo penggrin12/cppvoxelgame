@@ -8,7 +8,7 @@
 #include "utils/random.hpp"
 
 
-class MesherCache {
+class Mesher::MesherCache {
 public:
     Voxel::Id voxels[3][3][CHUNK_VOXELS_TOTAL];
     bool exists[3][3];
@@ -75,7 +75,7 @@ inline glm::vec4 Mesher::getAo(const Side &side, const MesherCache &cache, const
     return aos;
 }
 
-inline QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
+inline Mesher::QuadUVs Mesher::getQuadUVs(const glm::ivec2 &atlasOffset) {
     static constexpr float uvSize = 1.0f / TEXTURE_ATLAS_ITEM_SIZE;
     const vec2 uvOffset = static_cast<vec2>(atlasOffset) * uvSize;
     constexpr float inset = 1.0f / TEXTURE_ATLAS_PIXEL_SIZE * 0.01f; // hacky way to prevent texture bleeding
@@ -147,7 +147,6 @@ void Mesher::worker(Level *level) { ZoneScoped;
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     MeshTool meshTool;
-
     auto cache = std::make_unique<MesherCache>();
 
     while (!shouldStop) { ZoneScoped
