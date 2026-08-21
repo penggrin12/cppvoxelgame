@@ -123,10 +123,8 @@ inline void Mesher::addVegetation(MeshTool &meshTool, const Voxel::Id id, const 
 
     const auto [uvA, uvB, uvC, uvD] = getQuadUVs(VOXEL_ATLAS_OFFSETS[id][0]);
 
-    // should maybe be dependent on location
-    const vec3 posOffset = {
-        rng::range(-0.2, 0.2), 0, rng::range(-0.2, 0.2)
-    };
+    const vec2 posOffsetXZ = rng::sampleVec2(loc.getGlobalPos(), -0.2f, 0.2f);
+    const vec3 posOffset = {posOffsetXZ.x, 0, posOffsetXZ.y};
     for (const auto &[v0, v1, v2, v3] : CROSS_VERTICES) {
         const vec3 a = static_cast<vec3>(CUBE_VERTICES[v0] + loc.pos) + posOffset;
         const vec3 b = static_cast<vec3>(CUBE_VERTICES[v1] + loc.pos) + posOffset;

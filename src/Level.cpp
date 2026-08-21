@@ -88,7 +88,7 @@ void Level::genChunk(const ivec2 chunkPos) { ZoneScoped;
             const auto height = static_cast<int>((noise::at(x + chunkPos.x * CHUNK_SIZE, z + chunkPos.y * CHUNK_SIZE) / 2.0f + 0.5f) * 64);
             for (int y = 0; y < LEVEL_HEIGHT; ++y) {
                 if (y > height) {
-                    if (y == height + 1 && rng::randFloat() < 0.25)
+                    if (y == height + 1 && rng::randBool(0.25))
                         chunk->setVoxel(ivec3(x, y, z), Voxel::TALL_GRASS);
                     continue;
                 }
